@@ -1,0 +1,3 @@
+# Patch context uses a leading space even on empty source lines.
+# Keep this reviewed patch byte-stable and allow its required context spaces.
+implementation.diff text eol=lf whitespace=-blank-at-eol
