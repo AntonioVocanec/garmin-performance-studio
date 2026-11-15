@@ -86,3 +86,11 @@ Završni kandidat obuhvaća svih pet faza. [Developer Handoff](releases/GPS-2026
 ## Produkcijska aktivacija — 15. 11. 2026.
 
 `GPS-20261115-training-response-01` je `PRODUCTION_ACTIVE`, PID 4308, port 8787, SQLite v12, nakon izričitog korisničkog odobrenja. Migracija je sačuvala svih 32 postojećih tablica; nakon pokretanja i stvarne Garmin sinkronizacije svih 30 zaštićenih tablica ostalo je neizmijenjeno. Posluženo je 20/20 provjerenih frontend datoteka, Garmin 20/20 izvora, Nutrition i analitički API rade. [Zapis aktivacije](releases/GPS-20261115-training-response-01/production-activation-20261115.json). Povijesni manifest kandidata sačuvan je bez izmjene.
+
+## GPS-20261115-nutrition-ux-01
+
+Kandidat zadatka `NUTRITION-UX-AUDIT-01` pripremljen je u izdvojenom okruženju. Nutrition E2E 10/10, grafovi 2/2, dodatna provjera tipkovnice 1/1. pnpm check i produkcijski build prolaze. Manifest i izvještaj nalaze se u istoimenoj release mapi. Izvori su radna kopija nad commitom `7b84b0b8145d06ec1565c3623f939d3412417f7b`, uključujući ranije provjereni hover popravak. Aktivacija, commit i push čekaju zasebno odobrenje za ovaj zadatak.
+
+### Aktivacija Nutrition UX — 15. 11. 2026.
+
+`GPS-20261115-nutrition-ux-01` aktiviran je uz izričito odobrenje korisnika. Prethodni server PID 37860 zaustavljen je prije isporuke. Novi PID 8816 sluša na 127.0.0.1:8787. Provjereno je svih 20 posluženih frontend hashova, SQLite v12, integritet, strane veze i očuvanje sadržaja svih 36 tablica. Nutrition profil, dashboard i arhivirana zdravstvena povijest vraćaju HTTP 200. Sačuvani su prethodni frontend i konzistentna kopija baze izvan rotacije. Kandidatov manifest i raniji izvještaj opisuju stanje prije aktivacije; novi zapis je `releases/GPS-20261115-nutrition-ux-01/local-activation-20261115.json`.

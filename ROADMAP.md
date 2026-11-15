@@ -56,3 +56,17 @@ Svih pet faza implementirano je i provjereno lokalno. Pripremljeni su odvojeni m
 ### Produkcijska aktivacija pet faza — 15. 11. 2026.
 
 Svih pet faza aktivirano je uz korisničko odobrenje kao `GPS-20261115-training-response-01`. SQLite v12, PID 4308, port 8787. Integritet i strane veze prolaze, korisnički Nutrition i dnevnički zapisi očuvani, 20/20 posluženih frontend datoteka i 20/20 Garmin izvora provjereno. Prethodni odlomci o čekanju aktivacije opisuju stanje prije ove aktivacije. Sigurnosna zabrana popravka razvojnih poveznica ostaje nerazjašnjena.
+
+## NUTRITION-UX-AUDIT-01 — lokalne provjere 15. 11. 2026.
+
+- [x] ~~N1 — Poruke vezane uz podkarticu i datum~~. Promjena konteksta briše poruku, a zakašnjeli uspjeh i pogreška radnje provjeravaju reviziju konteksta.
+- [x] ~~N2 — Hrvatski pristupačni opisi nutritivnih grafikona~~. Graf, tooltip, tablica i odabir tipkovnicom koriste provjerene numeričke vrijednosti. Nedostajući podatak i 0 imaju različite opise.
+- [x] ~~N3 — Hrvatska nutritivna polja~~. Energija u kcal, proteini/UH/masti/vlakna u g, osnovica na 100 g, stvaranje i uređivanje.
+- [x] ~~Prazna kupovina i ručne liste~~. Razlikuje prazan plan i plan bez manjkova, omogućuje praznu listu i ručni unos. Nulti manjkovi iz API odgovora izostavljeni su iz prikaza nedostataka.
+- [x] ~~Izolirani korisnički tijek~~. Unos namirnice, primitak, recept, planiranje bez potrošnje, kuhanje, pola porcije u dnevniku i kupovina. Nutrition E2E 10/10, grafovi 2/2, dodatna provjera tipkovnice 1/1. Tipovi bez grešaka i upozorenja, izdvojeni build prolazi.
+
+Kandidat `GPS-20261115-nutrition-ux-01` pripremljen je za pregled. Commit, push i aktivacija na portu 8787 čekaju zasebno odobrenje za ovaj zadatak. Provjere koriste novu izdvojenu bazu na portu 8878 i simulirane vanjske podatke.
+
+### Aktivacija Nutrition UX — 15. 11. 2026.
+
+`GPS-20261115-nutrition-ux-01` aktiviran je uz izričito odobrenje korisnika. Prethodni server PID 37860 zaustavljen je prije isporuke. Novi PID 8816 sluša na 127.0.0.1:8787. Provjereno je svih 20 posluženih frontend hashova, SQLite v12, integritet, strane veze i očuvanje sadržaja svih 36 tablica. Nutrition profil, dashboard i arhivirana zdravstvena povijest vraćaju HTTP 200. Sačuvani su prethodni frontend i konzistentna kopija baze izvan rotacije. Kandidatov manifest i raniji izvještaj opisuju stanje prije aktivacije; novi zapis je `releases/GPS-20261115-nutrition-ux-01/local-activation-20261115.json`.

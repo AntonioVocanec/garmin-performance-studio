@@ -1,0 +1,30 @@
+{
+  "releaseId": "GPS-20261115-nutrition-ux-01",
+  "taskId": "NUTRITION-UX-AUDIT-01",
+  "status": "LOCAL_ACTIVE",
+  "activationApprovedByUser": true,
+  "verifiedAtUTC": "2026-11-15T13:17:23.965601+00:00",
+  "previousPID": 37860,
+  "activePID": 8816,
+  "host": "127.0.0.1",
+  "port": 8787,
+  "manifestSHA256": "7882785f0aaf266631cae9b70a23c964d29f5d7834a6a8cf09e3c28403f9735f",
+  "sqliteSchema": 12,
+  "migrationRequired": false,
+  "backupDirectory": "C:\\Users\\carti\\Documents\\ChatGPT\\GarminActivationBackups\\GPS-nutrition-ux-20261115-141640",
+  "checks": {
+    "frontendHashesMatched": 20,
+    "frontendHashesExpected": 20,
+    "healthHTTP": 200,
+    "nutritionProfileHTTP": 200,
+    "nutritionDashboardHTTP": 200,
+    "archivedHealthHistoryHTTP": 200,
+    "sqliteIntegrity": "ok",
+    "foreignKeyErrors": 0,
+    "tablesPreserved": 36
+  },
+  "gitStatusAtActivation": "Changes verified, commit and push follow this record",
+  "verificationScope": "Read-only local API smoke checks; synthetic cooking covered in isolated Playwright tests",
+  "manifestGitContentSHA256": "ba8ddccb294e4ed1c92c07698e81a2608f2f0d4862b7bd441acb8f6e523f4a88",
+  "manifestLineEndings": "Original candidate manifest retained locally; Git index converts CRLF to LF. Both SHA-256 identities recorded; JSON content identical."
+}

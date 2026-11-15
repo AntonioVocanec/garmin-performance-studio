@@ -3,6 +3,7 @@
  let {mode,foods,onchange,recipe=null,food=null}:{mode:'food'|'recipe';foods:Food[];onchange:()=>Promise<void>;recipe?:Recipe|null;food?:Food|null}=$props();
  let name=$state(''),source=$state(''),foodState=$state('label'),unit=$state('g'),grams=$state(''),minimum=$state('0'),allergens=$state(''),tags=$state(''),known=$state(false);
  let micros=$state<{name:string;value:string;unit:string}[]>([]);
+ const nutrientLabels:Record<string,string>={kcal:'Energija · kcal',protein:'Proteini · g',carbs:'Ugljikohidrati · g',fat:'Masti · g',fiber:'Vlakna · g'};
  let nutrients=$state<Record<string,string>>({kcal:'',protein:'',carbs:'',fat:'',fiber:''});
  let portions=$state('1'),minutes=$state('20'),method=$state('other'),category=$state('lunch'),steps=$state('');
  let ingredients=$state<{foodId:string;quantity:string;optional:boolean}[]>([]);let error=$state('');let busy=$state(false);
@@ -29,7 +30,7 @@
  <label>Minimalna zaliha<input inputmode="decimal" bind:value={minimum}/></label><label>Izvor podataka<input required maxlength="300" bind:value={source} placeholder="Deklaracija proizvoda / provjereni izvor"/></label>
  <label>Definicija ugljikohidrata<select bind:value={carbDefinition}><option value="unknown">Nije potvrđena</option><option value="eu_available">EU deklaracija · UH odvojeni od vlakana</option><option value="total_including_fiber">Ukupni UH uključuju vlakna · potvrđeno na izvoru</option></select></label>
  <label>Metoda energije<select bind:value={energyMethod}><option value="declared">Deklarirana energija</option><option value="unknown">Nepoznata metoda</option><option value="usda_1008">USDA 1008</option><option value="atwater_general">Atwater opći faktori</option><option value="atwater_specific">Atwater specifični faktori</option></select></label>
- {#each Object.keys(nutrients) as k}<label>{k} / 100 g<input inputmode="decimal" bind:value={nutrients[k]} placeholder="Nepoznato"/></label>{/each}
+ {#each Object.keys(nutrients) as k}<label>{nutrientLabels[k]} na 100 g<input inputmode="decimal" bind:value={nutrients[k]} placeholder="Nepoznato"/></label>{/each}
  <label>Alergeni (zarez)<input bind:value={allergens}/></label><label>Potvrđene prehrambene oznake<input bind:value={tags} placeholder="vegetarijansko, bez jaja"/></label>
  <label class="nutrition-check"><input type="checkbox" bind:checked={known}/>Sastav i alergeni provjereni na izvoru</label>
  {:else}

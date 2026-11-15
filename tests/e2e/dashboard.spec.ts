@@ -208,6 +208,23 @@ test("opens a chart data table with event context and exports the visible range 
   expect(download.suggestedFilename()).toBe("sleep-chart.csv");
 });
 
+test("shows hover details only on the chart under the pointer", async ({ page }) => {
+  await mockDashboardApi(page);
+  await page.goto("/");
+  await showView(page, "Laboratorij");
+  await page.locator("#sleep-recovery").getByRole("tab", { name: "Oporavak" }).click();
+
+  const visibleTips = page.locator(".dashboard-chart-tooltip:visible");
+  for (const id of ["recovery-hrv-chart", "recovery-rhr-chart"]) {
+    const chart = page.locator(`#${id}`);
+    await chart.locator("canvas").first().hover({ position: { x: 90, y: 65 } });
+    await expect(chart.locator(".dashboard-chart-tooltip")).toBeVisible();
+    await expect(visibleTips).toHaveCount(1);
+  }
+  await page.mouse.move(0, 0);
+  await expect(visibleTips).toHaveCount(0);
+});
+
 test("navigates chart dates with the keyboard and opens the selected day", async ({ page }) => {
   await mockDashboardApi(page);
   await page.goto("/");

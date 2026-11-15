@@ -167,7 +167,7 @@ test('nutrition catalogue and recipe editor create real local records without ex
  await page.locator('.nutrition summary').filter({hasText:'Nova namirnica'}).click();
  await page.getByRole('textbox',{name:'Naziv',exact:true}).fill(name);
  await page.getByRole('textbox',{name:'Izvor podataka',exact:true}).fill('Synthetic label');
- await page.getByRole('textbox',{name:'kcal / 100 g',exact:true}).fill('100');
+ await page.getByRole('textbox',{name:'Energija · kcal na 100 g',exact:true}).fill('100');
  await page.getByRole('button',{name:'Spremi',exact:true}).click();
  await expect(page.getByRole('combobox',{name:'Namirnica',exact:true})).toContainText(name);
  await page.locator('.quick-nav a[href="#nutrition-recipes"]').click();

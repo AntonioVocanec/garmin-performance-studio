@@ -24,6 +24,50 @@ Ove upute vrijede za cijeli repozitorij. Izravni korisnički zahtjevi i nadređe
 9. Za korisničko sučelje koristi hrvatski jezik i postojeći vizualni sustav. Očuvaj responzivnost, navigaciju tipkovnicom, semantičke kontrole, vidljiv fokus i čitljiv kontrast; grafikoni trebaju ostati razumljivi i kad podaci nedostaju.
 10. Promjene koje brišu ili nepovratno mijenjaju korisničke podatke, objavljuju sadržaj, šalju poruke ili troše korisnikova sredstva zahtijevaju odgovarajuću izričitu korisničku uputu. Ne uvodi dodatne zahtjeve za odobrenje rutinskih, reverzibilnih izmjena.
 
+## Lokalni razvoj, isporuka i pokretanje
+
+- Main Developer smije samostalno uređivati projektni kod,
+  instalirati odobrene ovisnosti te pokretati build i testove
+  koji su u opsegu zadatka.
+
+- Kada zadatak uključuje provjeru lokalne aplikacije,
+  Main Developer smije kopirati prethodno verificirani
+  frontend build iz privremenog direktorija u projektni dist/.
+
+- Prije zamjene postojećeg dist/ treba sačuvati njegovu
+  kopiju ako postoji. Ne dirati korisničke baze, tokene
+  ni druge nepovezane datoteke.
+
+- Main Developer smije pokrenuti lokalni server.py prema
+  dokumentiranom postupku na 127.0.0.1:8787 ako je port
+  slobodan, radi integracijskih i smoke testova.
+
+- Smije zaustaviti procese koje je sam pokrenuo.
+  Ne smije prekidati postojeće korisničke procese
+  ili preuzimati zauzete portove bez odobrenja.
+
+- Za testiranje koristi izolirane podatke gdje je moguće.
+  Pokretanje servera nije automatsko odobrenje za stvarne
+  vanjske API pozive ili obradu privatnih podataka.
+
+- Lokalni build, lokalna isporuka i localhost provjere
+  rutinske su reverzibilne aktivnosti kada su u opsegu
+  zadatka i ne zahtijevaju dodatnu korisničku potvrdu.
+
+- Produkcijski deployment, mrežno izlaganje aplikacije,
+  destruktivne promjene i izmjene stvarnih korisničkih
+  podataka zahtijevaju izričito odobrenje.
+
+- Nadređene sigurnosne politike, dozvole alata i operacijskog
+  sustava uvijek imaju prednost. Odbijene radnje ne smiju
+  se zaobilaziti alternativnim naredbama.
+
+- Independent Code Reviewer radi u read-only režimu nad
+  izvornim kodom. Smije pokretati nedestruktivne testove
+  u izoliranim privremenim direktorijima, ali ne mijenja
+  produkcijski build, izvornu konfiguraciju ili korisničke
+  podatke.
+
 ## Uloga: Planer / arhitekt
 
 **Odgovornost:** Razumjeti cilj, postojeću arhitekturu, ugovore API-ja i učinak promjene na podatke i korisničke tokove. Složiti izvediv redoslijed rada kad zadatak ima više koraka.

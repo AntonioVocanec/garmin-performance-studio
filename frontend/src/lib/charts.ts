@@ -15,14 +15,59 @@ echarts.use([AriaComponent, BarChart, CanvasRenderer, DataZoomComponent, GridCom
 const chartReferenceColor = "#82979f";
 
 /** Nutrition dates are independent of the Performance history-window override. */
-export function renderNutritionSeries(id: string, points: Record<string, unknown>[], series: {key:string;label:string;color:string}[], unit: string, title='Prehrana'): void {
-  const target=prepareTarget(id,points,`${title} · ${series.map(s=>s.label).join(', ')} · ${unit}`,220,points.filter(p=>series.some(s=>p[s.key]!=null)).length);
-  if(!target)return;
-  setChartInspector(target,title,points,'date',series.map(s=>({label:s.label,value:p=>valueOf(p,s.key)==null?'—':`${valueOf(p,s.key)?.toLocaleString('hr-HR',{maximumFractionDigits:1})} ${unit}`})));
-  const chart=echarts.getInstanceByDom(target);
-  chart?.setOption({backgroundColor:'transparent',aria:{enabled:true},tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#94a9ae'}},grid:{left:48,right:16,top:20,bottom:55},xAxis:{type:'category',data:points.map(p=>String(p.date).slice(5)),axisLabel:{color:'#94a9ae'}},yAxis:{type:'value',name:unit,axisLabel:{color:'#94a9ae'},splitLine:{lineStyle:{color:'#24363e'}}},series:series.map(s=>({name:s.label,type:'line',connectNulls:false,data:points.map(p=>p[s.key]??null),lineStyle:{color:s.color,width:2.5},itemStyle:{color:s.color},emphasis:{focus:'series',lineStyle:{width:4}},blur:{lineStyle:{opacity:.15}}}))} as EChartsOption);
+export function renderNutritionSeries(
+  id: string,
+  points: Point[],
+  series: { key: string; label: string; color: string }[],
+  unit: string,
+  title = "Prehrana",
+): void {
+  const normalized = points.map(point => ({
+    ...point,
+    ...Object.fromEntries(series.map(item => [item.key, valueOf(point, item.key)])),
+  }));
+  const formatValue = (point: Point, key: string): string => {
+    const value = valueOf(point, key);
+    return value == null ? "nema podatka" : `${value.toLocaleString("hr-HR", { maximumFractionDigits: 1 })} ${unit}`;
+  };
+  const describePoint = (point: Point) => series.map(item => `${item.label}: ${formatValue(point, item.key)}`).join(", ");
+  const description = `${title}. ${normalized.map(point => `${fullDate(point.date)}. ${describePoint(point)}.`).join(" ")}`;
+  const valueCount = normalized.filter(point => series.some(item => valueOf(point, item.key) != null)).length;
+  const target = prepareTarget(id, normalized, description, 220, valueCount);
+  const inspectorTarget = target ?? targetFor(id);
+  if (inspectorTarget) {
+    setChartInspector(inspectorTarget, title, normalized, "date",
+      series.map(item => ({ label: item.label, value: point => formatValue(point, item.key) })));
+  }
+  if (!target) return;
+  const chart = echarts.getInstanceByDom(target);
+  chart?.setOption({
+    backgroundColor: "transparent",
+    aria: { enabled: true, label: { description } },
+    tooltip: {
+      ...tooltipBase,
+      trigger: "axis",
+      formatter: (params: unknown) => {
+        const first = (Array.isArray(params) ? params[0] : params) as { dataIndex?: number };
+        const point = normalized[first?.dataIndex ?? -1];
+        if (!point) return "";
+        return `${escapeTooltip(fullDate(point.date))}<br/>${series.map(item =>
+          `${escapeTooltip(item.label)}: <b>${escapeTooltip(formatValue(point, item.key))}</b>`).join("<br/>")}`;
+      },
+    },
+    legend: { bottom: 0, textStyle: { color: "#94a9ae" } },
+    grid: { left: 48, right: 16, top: 20, bottom: 55 },
+    xAxis: { type: "category", data: normalized.map(point => shortDate(point.date)), axisLabel: { color: "#94a9ae" } },
+    yAxis: { type: "value", name: unit, axisLabel: { color: "#94a9ae" }, splitLine: { lineStyle: { color: "#24363e" } } },
+    series: series.map(item => ({
+      name: item.label, type: "line", connectNulls: false,
+      data: normalized.map(point => valueOf(point, item.key)),
+      lineStyle: { color: item.color, width: 2.5 }, itemStyle: { color: item.color },
+      emphasis: { focus: "series", lineStyle: { width: 4 } }, blur: { lineStyle: { opacity: .15 } },
+    })),
+  } as EChartsOption);
   chart?.resize();
-  if(chart){bindTimeSeriesInteractions(chart,target,points,'date',undefined,p=>series.map(s=>`${s.label}: ${valueOf(p,s.key)??'—'} ${unit}`).join('; '));bindDateHover(chart,target,points,'date')}
+  if (chart) bindTimeSeriesInteractions(chart, target, normalized, "date", undefined, describePoint);
 }
 
 export function renderAnalyticsSeries(id:string,points:Record<string,unknown>[],series:{key:string;label:string;color:string}[],unit:string,title:string):void {
@@ -134,24 +179,20 @@ interface ResizeBinding {
 }
 
 const bindings = new WeakMap<HTMLElement, ResizeBinding>();
-interface DateLinkedChart { chart: EChartsType; target: HTMLElement; points: Point[]; dateKey: string }
-interface PointerBinding { move: (event: PointerEvent) => void; leave: () => void }
 interface TimeSeriesBinding {
   click: (event: MouseEvent) => void;
   keydown: (event: KeyboardEvent) => void;
   blur: () => void;
 }
-const dateLinkedCharts = new Map<string, DateLinkedChart>();
-const pointerBindings = new WeakMap<HTMLElement, PointerBinding>();
 const timeSeriesBindings = new WeakMap<HTMLElement, TimeSeriesBinding>();
 const chartInspectorData = new WeakMap<HTMLDetailsElement, ChartInspectorData>();
 const textColor = "#91a5aa";
 const gridColor = "#29383e";
 let activeChartDateRange: { start: string; end: string } | null = null;
 let activeChartAnnotations: ChartAnnotation[] = [];
-let activeLinkedHover: { sourceId: string; date: string } | null = null;
 const rangedChartRenderers = new Map<string, () => void>();
 const tooltipBase = {
+  className: "dashboard-chart-tooltip",
   triggerOn: window.matchMedia("(pointer: coarse)").matches ? "click" : "mousemove|click",
   confine: true,
   backgroundColor: "#10191f",
@@ -410,54 +451,6 @@ function emitDateSelection(target: HTMLElement, points: Point[], dateKey: string
   }));
 }
 
-function hideLinkedTooltips(sourceId: string): void {
-  if (activeLinkedHover?.sourceId !== sourceId) return;
-  activeLinkedHover = null;
-  for (const [id, linked] of dateLinkedCharts) {
-    if (id !== sourceId && !linked.chart.isDisposed()) linked.chart.dispatchAction({ type: "hideTip" });
-  }
-}
-
-function showLinkedDate(sourceId: string, date: string): void {
-  if (activeLinkedHover?.sourceId === sourceId && activeLinkedHover.date === date) return;
-  activeLinkedHover = { sourceId, date };
-  for (const [id, linked] of dateLinkedCharts) {
-    if (id === sourceId || linked.chart.isDisposed()) continue;
-    const index = linked.points.findIndex((point) => String(point[linked.dateKey] ?? "").slice(0, 10) === date);
-    if (index < 0) linked.chart.dispatchAction({ type: "hideTip" });
-    else linked.chart.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex: index });
-  }
-}
-
-function bindDateHover(chart: EChartsType, target: HTMLElement, points: Point[], dateKey: string): void {
-  const previous = pointerBindings.get(target);
-  if (previous) {
-    target.removeEventListener("pointermove", previous.move);
-    target.removeEventListener("pointerleave", previous.leave);
-  }
-  dateLinkedCharts.set(target.id, { chart, target, points, dateKey });
-  const move = (event: PointerEvent) => {
-    const rect = target.getBoundingClientRect();
-    const axisValue = chart.convertFromPixel({ xAxisIndex: 0 }, event.clientX - rect.left);
-    if (axisValue == null) {
-      hideLinkedTooltips(target.id);
-      return;
-    }
-    const numericIndex = Number(axisValue);
-    const exactDate = String(axisValue ?? "").slice(0, 10);
-    const point = /^\d{4}-\d{2}-\d{2}$/.test(exactDate)
-      ? points.find((item) => String(item[dateKey] ?? "").slice(0, 10) === exactDate)
-      : Number.isFinite(numericIndex) ? points[Math.round(numericIndex)] : undefined;
-    const date = String(point?.[dateKey] ?? "").slice(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) showLinkedDate(target.id, date);
-    else hideLinkedTooltips(target.id);
-  };
-  const leave = () => hideLinkedTooltips(target.id);
-  pointerBindings.set(target, { move, leave });
-  target.addEventListener("pointermove", move, { passive: true });
-  target.addEventListener("pointerleave", leave, { passive: true });
-}
-
 function bindTimeSeriesInteractions(
   chart: EChartsType,
   target: HTMLElement,
@@ -498,7 +491,6 @@ function bindTimeSeriesInteractions(
     const context = annotationSummary(point, dateKey, endDateKey);
     target.setAttribute("aria-label", `${initialLabel}. Odabrano: ${dateLabel}. ${description}${context !== "—" ? `. Kontekst: ${context}` : ""}`);
     chart.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex: index });
-    if (/^\d{4}-\d{2}-\d{2}$/.test(start)) showLinkedDate(target.id, start);
   };
   const keydown = (event: KeyboardEvent) => {
     let index = selectedIndex;
@@ -515,13 +507,12 @@ function bindTimeSeriesInteractions(
       selectedIndex = -1;
       target.setAttribute("aria-label", initialLabel);
       chart.dispatchAction({ type: "hideTip" });
-      hideLinkedTooltips(target.id);
       return;
     } else return;
     event.preventDefault();
     selectPoint(index);
   };
-  const blur = () => hideLinkedTooltips(target.id);
+  const blur = () => chart.dispatchAction({ type: "hideTip" });
   timeSeriesBindings.set(target, { click, keydown, blur });
   target.addEventListener("click", click);
   target.addEventListener("keydown", keydown);
@@ -595,14 +586,6 @@ function disposeTarget(target: HTMLElement): void {
     target.removeEventListener("blur", timeSeries.blur);
     timeSeriesBindings.delete(target);
   }
-  const pointer = pointerBindings.get(target);
-  if (pointer) {
-    target.removeEventListener("pointermove", pointer.move);
-    target.removeEventListener("pointerleave", pointer.leave);
-    pointerBindings.delete(target);
-  }
-  dateLinkedCharts.delete(target.id);
-  if (activeLinkedHover?.sourceId === target.id) hideLinkedTooltips(target.id);
   const binding = bindings.get(target);
   binding?.observer?.disconnect();
   (binding?.chart || echarts.getInstanceByDom(target))?.dispose();
@@ -823,7 +806,6 @@ export function renderLineChart(
         return `${name}: ${value == null ? "nema podatka" : `${formatValue(value)}${options.unit ?? ""}`}`;
       },
     );
-    bindDateHover(chart, chartTarget, displayPoints, options.dateKey ?? "date");
   }
 }
 
@@ -1125,7 +1107,6 @@ export function renderPairLineChart(
       context.endDateKey,
       (point) => `${labelA}: ${formatInspectorValue(valueOf(point, keyA))}; ${labelB}: ${formatInspectorValue(valueOf(point, keyB))}`,
     );
-    bindDateHover(chart, chartTarget, displayPoints, context.dateKey ?? "date");
   }
 }
 
@@ -1234,7 +1215,6 @@ export function renderTimelineSeriesChart(
       options.endDateKey,
       (point) => series.map((item) => `${item.label}: ${formatValue(item, valueOf(point, item.key))}`).join("; "),
     );
-    bindDateHover(chart, chartTarget, displayPoints, dateKey);
   }
 }
 
