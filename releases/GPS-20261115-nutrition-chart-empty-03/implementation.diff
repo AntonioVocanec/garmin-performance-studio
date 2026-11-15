@@ -1,0 +1,201 @@
+diff --git a/frontend/src/lib/charts.ts b/frontend/src/lib/charts.ts
+index 08c9312..4cb5362 100644
+--- a/frontend/src/lib/charts.ts
++++ b/frontend/src/lib/charts.ts
+@@ -14,6 +14,15 @@ echarts.use([AriaComponent, BarChart, CanvasRenderer, DataZoomComponent, GridCom
+ 
+ const chartReferenceColor = "#82979f";
+ 
++function dayCoverageLabel(total: number, available: number): string {
++  if (!total) return "Nema dana za prikaz";
++  const days = (count: number) => `${count.toLocaleString("hr-HR")} ${new Intl.PluralRules("hr-HR").select(count) === "one" ? "dan" : "dana"}`;
++  const period = days(total);
++  if (!available) return `${period} · bez dostupnih vrijednosti`;
++  if (available === total) return `${period} · svi dani imaju dostupne vrijednosti`;
++  return `${period} · ${days(available)} s vrijednostima`;
++}
++
+ /** Nutrition dates are independent of the Performance history-window override. */
+ export function renderNutritionSeries(
+   id: string,
+@@ -21,6 +30,7 @@ export function renderNutritionSeries(
+   series: { key: string; label: string; color: string }[],
+   unit: string,
+   title = "Prehrana",
++  rowKind: "records" | "days" = "records",
+ ): void {
+   const normalized = points.map(point => ({
+     ...point,
+@@ -31,13 +41,20 @@ export function renderNutritionSeries(
+     return value == null ? "nema podatka" : `${value.toLocaleString("hr-HR", { maximumFractionDigits: 1 })} ${unit}`;
+   };
+   const describePoint = (point: Point) => series.map(item => `${item.label}: ${formatValue(point, item.key)}`).join(", ");
+-  const description = `${title}. ${normalized.map(point => `${fullDate(point.date)}. ${describePoint(point)}.`).join(" ")}`;
+   const valueCount = normalized.filter(point => series.some(item => valueOf(point, item.key) != null)).length;
++  const coverage = rowKind === "days" ? dayCoverageLabel(normalized.length, valueCount) : undefined;
++  const description = `${title}.${coverage ? ` ${coverage}.` : ""} ${normalized.map(point => `${fullDate(point.date)}. ${describePoint(point)}.`).join(" ")}`;
+   const target = prepareTarget(id, normalized, description, 220, valueCount);
+   const inspectorTarget = target ?? targetFor(id);
+   if (inspectorTarget) {
+     setChartInspector(inspectorTarget, title, normalized, "date",
+-      series.map(item => ({ label: item.label, value: point => formatValue(point, item.key) })));
++      series.map(item => ({ label: item.label, value: point => formatValue(point, item.key) })), undefined, coverage);
++    if (!target && coverage) {
++      const empty = inspectorTarget.querySelector(".empty-chart");
++      if (empty) empty.textContent = coverage + (valueCount ? ". Za graf su potrebna barem dva dana s vrijednostima." : "");
++      inspectorTarget.setAttribute("role", "img");
++      inspectorTarget.setAttribute("aria-label", description);
++    }
+   }
+   if (!target) return;
+   const chart = echarts.getInstanceByDom(target);
+@@ -391,6 +408,7 @@ function setChartInspector(
+   dateKey: string,
+   columns: InspectorColumn[],
+   endDateKey?: string,
++  summaryLabel?: string,
+ ): void {
+   const existing = target.nextElementSibling;
+   let details = existing instanceof HTMLDetailsElement
+@@ -423,7 +441,7 @@ function setChartInspector(
+     target.insertAdjacentElement("afterend", details);
+   }
+   const summary = details.querySelector("summary");
+-  if (summary) summary.textContent = `${title} · ${points.length.toLocaleString("hr-HR")} zapisa`;
++  if (summary) summary.textContent = `${title} · ${summaryLabel ?? `${points.length.toLocaleString("hr-HR")} zapisa`}`;
+   chartInspectorData.set(details, { points, dateKey, endDateKey, columns });
+   if (details.open) renderInspectorTable(details);
+ }
+diff --git a/frontend/src/nutrition/NutritionCharts.svelte b/frontend/src/nutrition/NutritionCharts.svelte
+index 2d30eeb..4e16ff5 100644
+--- a/frontend/src/nutrition/NutritionCharts.svelte
++++ b/frontend/src/nutrition/NutritionCharts.svelte
+@@ -5,7 +5,7 @@
+  let charts:typeof import('../lib/charts')|undefined;
+  const renderNutritionSeries=(...args:Parameters<typeof import('../lib/charts')['renderNutritionSeries']>)=>charts?.renderNutritionSeries(...args);
+  onMount(()=>{let disposed=false;void import('../lib/charts').then(module=>{if(!disposed){charts=module;mounted=true}});return()=>{disposed=true}});onDestroy(()=>{if(host)charts?.disposeChartsInside(host)});
+- $effect(()=>{if(!mounted)return;const points=days.map(d=>{const macros=comparisonNutrients(d);const total=energy?.history?.find(h=>h.date===d.date)?.totalCalories??(energy?.date===d.date?energy.totalCalories:null);const intake=d.nutrients.kcal===null?null:Number(d.nutrients.kcal);return {date:d.date,intake,expenditure:total,balance:d.complete&&intake!==null&&total!==null?intake-total:null,protein:d.nutrients.protein===null?null:Number(d.nutrients.protein),carbs:macros.carbs===null?null:Number(macros.carbs),fat:d.nutrients.fat===null?null:Number(d.nutrients.fat)}});renderNutritionSeries('nutrition-energy-chart',points,[{key:'intake',label:'Unos',color:'#69d7ef'},{key:'expenditure',label:'Garmin ukupno',color:'#b9a2fa'}],'kcal','Unos i potrošnja · 7 dana');renderNutritionSeries('nutrition-macro-chart',points,[{key:'protein',label:'Proteini',color:'#69d7ef'},{key:'carbs',label:'Ugljikohidrati',color:'#b9a2fa'},{key:'fat',label:'Masti',color:'#d9a6c8'}],'g','Tjedni makronutrijenti');renderNutritionSeries('nutrition-balance-chart',points,[{key:'balance',label:'Bilanca potvrđenih dana',color:'#69d7ef'}],'kcal','Energetska bilanca · potvrđeni dani')});
++ $effect(()=>{if(!mounted)return;const points=days.map(d=>{const macros=comparisonNutrients(d);const total=energy?.history?.find(h=>h.date===d.date)?.totalCalories??(energy?.date===d.date?energy.totalCalories:null);const intake=d.nutrients.kcal===null?null:Number(d.nutrients.kcal);return {date:d.date,intake,expenditure:total,balance:d.complete&&intake!==null&&total!==null?intake-total:null,protein:d.nutrients.protein===null?null:Number(d.nutrients.protein),carbs:macros.carbs===null?null:Number(macros.carbs),fat:d.nutrients.fat===null?null:Number(d.nutrients.fat)}});renderNutritionSeries('nutrition-energy-chart',points,[{key:'intake',label:'Unos',color:'#69d7ef'},{key:'expenditure',label:'Garmin ukupno',color:'#b9a2fa'}],'kcal','Unos i potrošnja','days');renderNutritionSeries('nutrition-macro-chart',points,[{key:'protein',label:'Proteini',color:'#69d7ef'},{key:'carbs',label:'Ugljikohidrati',color:'#b9a2fa'},{key:'fat',label:'Masti',color:'#d9a6c8'}],'g','Tjedni makronutrijenti','days');renderNutritionSeries('nutrition-balance-chart',points,[{key:'balance',label:'Bilanca potvrđenih dana',color:'#69d7ef'}],'kcal','Energetska bilanca · potvrđeni dani','days')});
+ </script>
+ <div bind:this={host} class="nutrition-grid">
+  <article class="panel"><h3>Unos i potrošnja · 7 dana</h3><p class="quiet">Lokalni dnevnik i službeni Garmin ukupni podaci. Praznine ostaju praznine.</p><div id="nutrition-energy-chart"></div></article>
+diff --git a/frontend/src/nutrition/nutrition.css b/frontend/src/nutrition/nutrition.css
+index ea03de0..fcdd73e 100644
+--- a/frontend/src/nutrition/nutrition.css
++++ b/frontend/src/nutrition/nutrition.css
+@@ -1,2 +1,6 @@
+ .nutrition{display:grid;gap:16px;min-width:0}.nutrition .panel{padding:18px;min-width:0}.nutrition h2,.nutrition h3,.nutrition h4{margin:0 0 12px}.nutrition p{margin:8px 0;overflow-wrap:anywhere}.nutrition-toolbar,.nutrition-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.nutrition-toolbar h2{margin:0 auto 0 0}.nutrition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.nutrition-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.nutrition-wide{grid-column:1/-1}.nutrition-value{display:block;font-size:32px;letter-spacing:-.04em;color:var(--cyan)}.nutrition-value small,.nutrition-hero h2 small{font-size:14px;letter-spacing:0;color:var(--muted)}.nutrition-hero h2{font-size:42px;margin:14px 0}.nutrition-form{display:grid;gap:14px;margin-top:14px}.nutrition-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.nutrition label{display:grid;gap:6px;font-size:13px;color:var(--muted);min-width:0}.nutrition input,.nutrition select,.nutrition textarea{width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font:inherit}.nutrition textarea{resize:vertical}.nutrition .btn{min-height:44px;white-space:normal;overflow-wrap:anywhere}.nutrition .nutrition-check{display:flex;align-items:center;gap:10px;min-height:44px}.nutrition-check input{width:20px;min-height:20px;height:20px;flex:none}.nutrition-notice{padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.nutrition [role=alert]{border-color:var(--rose)}.nutrition-details>summary{display:flex;justify-content:space-between;gap:12px;cursor:pointer;font-weight:700;min-height:44px}.nutrition details:not(.nutrition-details)>summary{cursor:pointer;min-height:44px;padding:9px 0;overflow-wrap:anywhere}.nutrition-row,.nutrition-kv{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);min-width:0}.nutrition-row>div,.nutrition-row>span{min-width:0;overflow-wrap:anywhere}.nutrition-kv b{text-align:right}.nutrition .quiet{font-size:12px;line-height:1.6}.nutrition progress{accent-color:var(--cyan);width:100%;height:9px}.nutrition-ingredient{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;align-items:end;gap:10px}.nutrition-week{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px}.nutrition-plan-item{padding:12px 0;border-top:1px solid var(--line)}.nutrition :focus-visible{outline:2px solid var(--cyan);outline-offset:3px}.nutrition input[type=checkbox]{accent-color:var(--cyan)}
+ @media(max-width:760px){.nutrition-grid,.nutrition-kpis{grid-template-columns:1fr}.nutrition-hero{padding:21px 18px}.nutrition-hero h2{font-size:34px}.nutrition .panel{padding:16px}.nutrition-toolbar h2{font-size:19px}.nutrition-row{align-items:flex-start;flex-wrap:wrap}.nutrition-ingredient{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.nutrition-ingredient>label:first-child{grid-column:1/-1}.nutrition-fields{grid-template-columns:1fr}.nutrition .nutrition-details>summary{padding:0}.nutrition-week{grid-template-columns:1fr}.nutrition-kv{align-items:flex-start}.nutrition .btn{font-size:13px}.nutrition{gap:12px}}
++.nutrition .chart-data-inspector summary {
++  font-size: 12px;
++  line-height: 1.5;
++}
+diff --git a/tests/e2e/nutrition-ux.spec.ts b/tests/e2e/nutrition-ux.spec.ts
+index e09a5e7..de6fd30 100644
+--- a/tests/e2e/nutrition-ux.spec.ts
++++ b/tests/e2e/nutrition-ux.spec.ts
+@@ -15,6 +15,104 @@ async function go(page: Page, section: string) {
+   await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy', 'false');
+ }
+ 
++test.describe('Nutrition chart day coverage', () => {
++  test.use({ serviceWorkers: 'block' });
++  const dates = Array.from({ length: 7 }, (_, i) => `2026-10-${25 + i}`);
++  const missingDay = (date: string) => ({ date, complete: false,
++    nutrients: { kcal: null, protein: null, carbs: null, fat: null, fiber: null } });
++  const scenarios = [
++    { name: 'no rows', count: 0, values: [], expected: 'Nema dana za prikaz' },
++    { name: 'all missing', count: 7, values: [], expected: '7 dana · bez dostupnih vrijednosti' },
++    { name: 'partial', count: 7, values: [0, 100, null, null, null, null, null], expected: '7 dana · 3 dana s vrijednostima' },
++    { name: 'all zero', count: 7, values: [0, 0, 0, 0, 0, 0, 0], expected: '7 dana · svi dani imaju dostupne vrijednosti' },
++    { name: 'single missing', count: 1, values: [], expected: '1 dan · bez dostupnih vrijednosti' },
++  ];
++
++  for (const scenario of scenarios) {
++    test(scenario.name, async ({ page }, testInfo) => {
++      await mockDashboardApi(page);
++      const rows = dates.slice(0, scenario.count).map((date, index) => ({ ...missingDay(date),
++        nutrients: { ...missingDay(date).nutrients, kcal: scenario.values[index] ?? null } }));
++      await page.route('**/api/nutrition/analytics?**', route => route.fulfill({ json: { ok: true, data: rows } }));
++      await page.route('**/api/nutrition/energy**', route => route.fulfill({ json: { ok: true, data: {
++        date: new URL(route.request().url()).searchParams.get('date'), status: 'unavailable', totalCalories: null,
++        // The same day has two series; a third day has only expenditure.
++        history: scenario.name === 'partial' ? [{ date: dates[1], totalCalories: 2000 }, { date: dates[5], totalCalories: 2500 }] : [],
++      } } }));
++      await page.goto('/#nutrition-overview');
++      const chart = page.locator('#nutrition-energy-chart');
++      const inspector = page.locator('details[data-chart-inspector-for="nutrition-energy-chart"]');
++      await expect(inspector.locator('summary')).toHaveText('Unos i potrošnja · ' + scenario.expected);
++      expect(await inspector.locator('summary').evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(12);
++      await expect(chart).toHaveAttribute('aria-label', new RegExp(scenario.expected.replace(/[.*+?^$()|[\]\\]/g, '\\$&')));
++      await inspector.locator('summary').click();
++      await expect(inspector.locator('tbody tr')).toHaveCount(scenario.count);
++      if (scenario.name === 'all zero' || scenario.name === 'partial') {
++        await expect(chart.locator('canvas')).toBeVisible();
++        await expect(inspector.locator('tbody tr').first()).toContainText('0 kcal');
++        await chart.focus();
++        await page.keyboard.press('Home');
++        await expect(chart).toHaveAttribute('aria-label', /Odabrano:.*Unos: 0 kcal/);
++      } else {
++        await expect(chart.locator('.empty-chart')).toHaveText(scenario.expected);
++        if (scenario.count) await expect(inspector.locator('tbody tr').first()).toContainText('nema podatka');
++      }
++      if (scenario.name === 'all missing' || scenario.name === 'partial') {
++        const panel = page.locator('.nutrition article').filter({ has: page.getByRole('heading', { name: 'Unos i potrošnja · 7 dana', exact: true }) });
++        for (const width of [1280, 390]) {
++          await page.setViewportSize({ width, height: 844 });
++          await panel.scrollIntoViewIfNeeded();
++          await panel.screenshot({ path: testInfo.outputPath(`nutrition-${scenario.name.replace(' ', '-')}-${width}.png`) });
++          const dimensions = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
++          expect(dimensions[0]).toBeLessThanOrEqual(dimensions[1] + 1);
++        }
++      }
++    });
++  }
++
++  test('refreshes coverage after date changes and returning to the overview', async ({ page }) => {
++    await mockDashboardApi(page);
++    let rows: unknown[] = dates.map(missingDay);
++    await page.route('**/api/nutrition/analytics?**', route => route.fulfill({ json: { ok: true, data: rows } }));
++    await page.route('**/api/nutrition/energy**', route => route.fulfill({ json: { ok: true, data: { date: new URL(route.request().url()).searchParams.get('date'), totalCalories: null, history: [] } } }));
++    await page.goto('/#nutrition-overview');
++    const summary = page.locator('details[data-chart-inspector-for="nutrition-energy-chart"] > summary');
++    await expect(summary).toContainText('7 dana · bez dostupnih vrijednosti');
++    rows = dates.map(date => ({ ...missingDay(date), nutrients: { ...missingDay(date).nutrients, kcal: '0' } }));
++    await page.locator('#date').fill('2020-01-06');
++    await page.locator('#date').press('Tab');
++    await expect(summary).toContainText('svi dani imaju dostupne vrijednosti');
++    await go(page, 'diary');
++    rows = [];
++    await go(page, 'overview');
++    await expect(summary).toContainText('Nema dana za prikaz');
++  });
++
++  test('counts valid zero but excludes absent and malformed values across Nutrition charts', async ({ page }) => {
++    await mockDashboardApi(page);
++    const rows = dates.map((date, index) => ({ date, complete: true, nutrients:
++      index === 0 ? { kcal: '0', protein: '0', carbs: null, fat: null, fiber: null }
++        : index === 1 ? { kcal: 'bad', protein: 'bad' }
++        : index === 2 ? {} : { kcal: null, protein: null, fat: null },
++    }));
++    await page.route('**/api/nutrition/analytics?**', route => route.fulfill({ json: { ok: true, data: rows } }));
++    await page.route('**/api/nutrition/energy**', route => route.fulfill({ json: { ok: true, data: {
++      date: new URL(route.request().url()).searchParams.get('date'), history: [{ date: dates[0], totalCalories: 0 }], totalCalories: null,
++    } } }));
++    await page.goto('/#nutrition-overview');
++    for (const id of ['nutrition-energy-chart', 'nutrition-macro-chart', 'nutrition-balance-chart']) {
++      const inspector = page.locator(`details[data-chart-inspector-for="${id}"]`);
++      await expect(inspector.locator('summary')).toContainText('7 dana · 1 dan s vrijednostima');
++      if (id === 'nutrition-balance-chart') await page.locator('.nutrition details > summary').filter({ hasText: /^Energetska bilanca · potvrđeni dani$/ }).click();
++      await inspector.locator('summary').click();
++      await expect(inspector.locator('tbody tr')).toHaveCount(7);
++      await expect(inspector.locator('tbody tr').first()).toContainText('0');
++      await expect(inspector.locator('tbody tr').nth(1)).toContainText('nema podatka');
++      await expect(inspector.locator('tbody')).not.toContainText('NaN');
++    }
++  });
++});
++
+ test('nutrition notices stay in their action context including late success and errors', async ({ page }) => {
+   await setup(page, 'shopping');
+   await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();

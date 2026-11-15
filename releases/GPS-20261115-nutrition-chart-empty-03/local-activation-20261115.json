@@ -1,0 +1,30 @@
+{
+  "releaseId": "GPS-20261115-nutrition-chart-empty-03",
+  "taskId": "NUTRITION-CHART-EMPTY-STATE-03",
+  "status": "LOCAL_ACTIVE",
+  "approvedByUser": true,
+  "verifiedAtUTC": "2026-11-15T15:46:05.143497+00:00",
+  "baselineCommitSha": "4f9e669a96a6ee0816211a0d26ce845978628d64",
+  "previousPID": 20888,
+  "activePID": 17152,
+  "host": "127.0.0.1",
+  "port": 8787,
+  "manifestSHA256": "766fb25975b761929fb49d55106238686f6d30ef018d39f30efd2ab02eb32fd1",
+  "backupDirectory": "C:\\Users\\carti\\Documents\\ChatGPT\\GarminActivationBackups\\GPS-nutrition-chart-empty-20261115-164531",
+  "sqliteSchema": 12,
+  "migrationRequired": false,
+  "checks": {
+    "frontendHashesMatched": 20,
+    "healthHTTP": 200,
+    "nutritionProfileHTTP": 200,
+    "nutritionDashboardHTTP": 200,
+    "archivedHealthHTTP": 200,
+    "integrity": "ok",
+    "foreignKeyErrors": 0,
+    "tablesPreserved": 36
+  },
+  "remainingLimitations": [
+    "Manual screen-reader verification not performed; targeted Chromium scenarios cover this release"
+  ],
+  "gitStateAtActivation": "Verified working tree; commit and push follow this record"
+}

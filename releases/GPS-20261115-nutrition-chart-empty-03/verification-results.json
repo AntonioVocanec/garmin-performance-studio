@@ -1,0 +1,33 @@
+{
+  "taskId": "NUTRITION-CHART-EMPTY-STATE-03",
+  "baseCommit": "4f9e669a96a6ee0816211a0d26ce845978628d64",
+  "playwright": {
+    "startTime": "2026-11-15T15:41:22.922Z",
+    "duration": 17197.042,
+    "expected": 11,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "pnpmCheck": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "isolatedBuild": "PASS",
+  "cases": [
+    "No rows",
+    "7 missing days",
+    "7 days with 3 available; two series on one day count once",
+    "7 days with all-zero values",
+    "1 missing day",
+    "Refresh after date/subtab changes",
+    "Absent/malformed values and zero across energy/macros/balance",
+    "Existing Croatian descriptions, generic row counters/CSV, keyboard dates and hover isolation"
+  ],
+  "viewports": [
+    1280,
+    390
+  ],
+  "manualScreenReader": "NOT TESTED",
+  "configuration": "nutrition-chart-empty.config.ts; fresh isolated database; no private .env files"
+}

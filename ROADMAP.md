@@ -84,3 +84,15 @@ Kandidat `GPS-20261115-nutrition-async-02` pripremljen je za review. Commit, pus
 ### Aktivacija Nutrition Async — 15. 11. 2026.
 
 `GPS-20261115-nutrition-async-02` aktiviran je uz korisničko odobrenje. Prethodni PID 8816 zaustavljen je prije isporuke, novi PID 20888 sluša na 127.0.0.1:8787. Posluženi hashovi odgovaraju paketu 20/20. SQLite v12 prolazi integritet i strane veze, a sadržaj svih 36 tablica očuvan je. Nutrition profil/dashboard, arhivirana zdravstvena povijest i /api/openapi.json vraćaju HTTP 200. Sačuvani su prethodni frontend, izvorni kod prethodnog commita i konzistentna kopija baze izvan rotacije. Ručna provjera čitačem zaslona ostaje otvorena. Zapis je `releases/GPS-20261115-nutrition-async-02/local-activation-20261115.json`. Raniji statusi čekanja u manifestu i izvještaju opisuju stanje kandidata prije aktivacije.
+
+## NUTRITION-CHART-EMPTY-STATE-03 — 15. 11. 2026.
+
+- [x] ~~Nutrition brojači dana i dostupnih vrijednosti~~. Sedam praznih dana više ne sugerira sedam mjerenja; nula se broji, a više serija u istom danu broji se jednom.
+- [x] ~~Vidljivi i pristupačni tekstovi~~. Usuglašeni prazni prikazi, summary i pristupačni nazivi; zadržani retci i oznake „nema podatka”. Generički brojači drugih grafikona zadržani su.
+- [x] ~~Ciljane provjere i snimke~~. Chromium 11/11, tipovi i izdvojeni build prolaze; prazni i djelomični prikaz snimljeni su na desktopu i 390 px.
+
+Kandidat `GPS-20261115-nutrition-chart-empty-03` pripremljen je za review. Ručna provjera čitačem zaslona nije provedena. Commit, push i aktivacija čekaju zasebno odobrenje.
+
+### Aktivacija Nutrition Chart Empty State — 15. 11. 2026.
+
+`GPS-20261115-nutrition-chart-empty-03` aktiviran je uz izričito korisničko odobrenje. Prethodni PID 20888 zaustavljen je prije isporuke. Novi PID 17152 sluša na 127.0.0.1:8787. Posluženo je 20/20 datoteka s odobrenim hashovima. SQLite v12 prolazi provjere integriteta i stranih veza, a sadržaj svih 36 tablica očuvan je. Health, Nutrition profil/dashboard i arhivirana zdravstvena povijest vraćaju HTTP 200. Prethodni frontend, kod i nova konzistentna kopija baze sačuvani su izvan rotacije. Ručna provjera čitačem zaslona ostaje otvorena. Novi zapis je `releases/GPS-20261115-nutrition-chart-empty-03/local-activation-20261115.json`; raniji statusi kandidata opisuju stanje prije aktivacije.

@@ -14,6 +14,15 @@ echarts.use([AriaComponent, BarChart, CanvasRenderer, DataZoomComponent, GridCom
 
 const chartReferenceColor = "#82979f";
 
+function dayCoverageLabel(total: number, available: number): string {
+  if (!total) return "Nema dana za prikaz";
+  const days = (count: number) => `${count.toLocaleString("hr-HR")} ${new Intl.PluralRules("hr-HR").select(count) === "one" ? "dan" : "dana"}`;
+  const period = days(total);
+  if (!available) return `${period} · bez dostupnih vrijednosti`;
+  if (available === total) return `${period} · svi dani imaju dostupne vrijednosti`;
+  return `${period} · ${days(available)} s vrijednostima`;
+}
+
 /** Nutrition dates are independent of the Performance history-window override. */
 export function renderNutritionSeries(
   id: string,
@@ -21,6 +30,7 @@ export function renderNutritionSeries(
   series: { key: string; label: string; color: string }[],
   unit: string,
   title = "Prehrana",
+  rowKind: "records" | "days" = "records",
 ): void {
   const normalized = points.map(point => ({
     ...point,
@@ -31,13 +41,20 @@ export function renderNutritionSeries(
     return value == null ? "nema podatka" : `${value.toLocaleString("hr-HR", { maximumFractionDigits: 1 })} ${unit}`;
   };
   const describePoint = (point: Point) => series.map(item => `${item.label}: ${formatValue(point, item.key)}`).join(", ");
-  const description = `${title}. ${normalized.map(point => `${fullDate(point.date)}. ${describePoint(point)}.`).join(" ")}`;
   const valueCount = normalized.filter(point => series.some(item => valueOf(point, item.key) != null)).length;
+  const coverage = rowKind === "days" ? dayCoverageLabel(normalized.length, valueCount) : undefined;
+  const description = `${title}.${coverage ? ` ${coverage}.` : ""} ${normalized.map(point => `${fullDate(point.date)}. ${describePoint(point)}.`).join(" ")}`;
   const target = prepareTarget(id, normalized, description, 220, valueCount);
   const inspectorTarget = target ?? targetFor(id);
   if (inspectorTarget) {
     setChartInspector(inspectorTarget, title, normalized, "date",
-      series.map(item => ({ label: item.label, value: point => formatValue(point, item.key) })));
+      series.map(item => ({ label: item.label, value: point => formatValue(point, item.key) })), undefined, coverage);
+    if (!target && coverage) {
+      const empty = inspectorTarget.querySelector(".empty-chart");
+      if (empty) empty.textContent = coverage + (valueCount ? ". Za graf su potrebna barem dva dana s vrijednostima." : "");
+      inspectorTarget.setAttribute("role", "img");
+      inspectorTarget.setAttribute("aria-label", description);
+    }
   }
   if (!target) return;
   const chart = echarts.getInstanceByDom(target);
@@ -391,6 +408,7 @@ function setChartInspector(
   dateKey: string,
   columns: InspectorColumn[],
   endDateKey?: string,
+  summaryLabel?: string,
 ): void {
   const existing = target.nextElementSibling;
   let details = existing instanceof HTMLDetailsElement
@@ -423,7 +441,7 @@ function setChartInspector(
     target.insertAdjacentElement("afterend", details);
   }
   const summary = details.querySelector("summary");
-  if (summary) summary.textContent = `${title} · ${points.length.toLocaleString("hr-HR")} zapisa`;
+  if (summary) summary.textContent = `${title} · ${summaryLabel ?? `${points.length.toLocaleString("hr-HR")} zapisa`}`;
   chartInspectorData.set(details, { points, dateKey, endDateKey, columns });
   if (details.open) renderInspectorTable(details);
 }
