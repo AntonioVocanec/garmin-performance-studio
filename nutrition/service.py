@@ -63,25 +63,39 @@ class NutritionService:
     def save_food(self, data, food_id=None):
         with self.connection() as db:
             db.execute('BEGIN IMMEDIATE')
-            if food_id:
-                old = self.food(db, food_id)
-                if old['version'] != data['expectedVersion']:
-                    raise DomainError('Namirnica je u međuvremenu izmijenjena.')
-                if old['unit'] != data['unit']:
-                    raise DomainError('Za drugu inventarnu jedinicu kreiraj novu namirnicu.')
-                db.execute('UPDATE nutrition_foods SET name=?,state=?,grams_per_unit=?,minimum_quantity=?,allergens_json=?,version=version+1 WHERE id=?', (data['name'].strip(), data['state'], fixed(data['gramsPerUnit']) if data['gramsPerUnit'] else None, fixed(data['minimumQuantity']), dumps(data['allergens']), food_id))
-            else:
-                food_id = uid()
-                db.execute('INSERT INTO nutrition_foods (id,name,state,unit,grams_per_unit,minimum_quantity,allergens_json) VALUES (?,?,?,?,?,?,?)', (food_id, data['name'].strip(), data['state'], data['unit'], fixed(data['gramsPerUnit']) if data['gramsPerUnit'] else None, fixed(data['minimumQuantity']), dumps(data['allergens'])))
-            version_id = uid()
-            db.execute('UPDATE nutrition_foods SET allergens_known=?,dietary_tags_json=? WHERE id=?',(int(data.get('allergensKnown',False)),dumps(data.get('dietaryTags',[])),food_id))
-            db.execute('INSERT INTO nutrition_nutrition_versions (id,food_id,source,source_id,retrieved_at,metadata_json) VALUES (?,?,?,?,?,?)', (version_id, food_id, data['source'], data.get('sourceId'), now(), dumps(nutrition_metadata(data))))
-            for key, value in data['nutrients'].items():
-                if value is not None:
-                    db.execute('INSERT INTO nutrition_nutrient_values VALUES (?,?,?,?)', (version_id, key, fixed(value), 'kcal' if key == 'kcal' else 'g'))
-            for key,value in data.get('micronutrients',{}).items():
-                db.execute('INSERT INTO nutrition_nutrient_values VALUES (?,?,?,?)',(version_id,'micro:'+key,fixed(value['value']),value['unit']))
-            return self.food(db, food_id)
+            return self.write_food(db, data, food_id)
+
+    def create_reviewed_food(self, data, key, allow_duplicate):
+        def write(db, _operation):
+            if not allow_duplicate and db.execute(
+                "SELECT 1 FROM nutrition_nutrition_versions v JOIN nutrition_foods f ON f.id=v.food_id "
+                "WHERE f.archived=0 AND v.source_id=? AND v.source LIKE 'USDA FoodData Central%' "
+                "AND v.rowid=(SELECT MAX(rowid) FROM nutrition_nutrition_versions WHERE food_id=f.id)",
+                (data['sourceId'],)).fetchone():
+                raise DomainError('Ovaj FDC zapis već postoji. Odaberi postojeći ili potvrdi novi unos.')
+            return self.write_food(db, data)
+        return self.repo.operation('usda_food_create', key, {**data, 'allowDuplicate':allow_duplicate}, write)
+
+    def write_food(self, db, data, food_id=None):
+        if food_id:
+            old = self.food(db, food_id)
+            if old['version'] != data['expectedVersion']:
+                raise DomainError('Namirnica je u međuvremenu izmijenjena.')
+            if old['unit'] != data['unit']:
+                raise DomainError('Za drugu inventarnu jedinicu kreiraj novu namirnicu.')
+            db.execute('UPDATE nutrition_foods SET name=?,state=?,grams_per_unit=?,minimum_quantity=?,allergens_json=?,version=version+1 WHERE id=?', (data['name'].strip(), data['state'], fixed(data['gramsPerUnit']) if data['gramsPerUnit'] else None, fixed(data['minimumQuantity']), dumps(data['allergens']), food_id))
+        else:
+            food_id = uid()
+            db.execute('INSERT INTO nutrition_foods (id,name,state,unit,grams_per_unit,minimum_quantity,allergens_json) VALUES (?,?,?,?,?,?,?)', (food_id, data['name'].strip(), data['state'], data['unit'], fixed(data['gramsPerUnit']) if data['gramsPerUnit'] else None, fixed(data['minimumQuantity']), dumps(data['allergens'])))
+        version_id = uid()
+        db.execute('UPDATE nutrition_foods SET allergens_known=?,dietary_tags_json=? WHERE id=?',(int(data.get('allergensKnown',False)),dumps(data.get('dietaryTags',[])),food_id))
+        db.execute('INSERT INTO nutrition_nutrition_versions (id,food_id,source,source_id,retrieved_at,metadata_json) VALUES (?,?,?,?,?,?)', (version_id, food_id, data['source'], data.get('sourceId'), now(), dumps(nutrition_metadata(data))))
+        for key, value in data['nutrients'].items():
+            if value is not None:
+                db.execute('INSERT INTO nutrition_nutrient_values VALUES (?,?,?,?)', (version_id, key, fixed(value), 'kcal' if key == 'kcal' else 'g'))
+        for key,value in data.get('micronutrients',{}).items():
+            db.execute('INSERT INTO nutrition_nutrient_values VALUES (?,?,?,?)',(version_id,'micro:'+key,fixed(value['value']),value['unit']))
+        return self.food(db, food_id)
 
     def change(self, db, operation, lot_id, delta, reason, event_date=None):
         lot = one(db, 'SELECT * FROM nutrition_inventory_lots WHERE id=?', (lot_id,))
@@ -365,6 +379,8 @@ class NutritionService:
     def reverse(self,key,operation_id):
         def action(db,op):
             old=one(db,'SELECT * FROM nutrition_operations WHERE id=?',(operation_id,))
+            if old['operation_type']=='usda_food_create':
+                raise DomainError('Namirnicu možeš urediti u katalogu.')
             if old['reversed_by'] or old['operation_type']=='reverse':raise DomainError('Operacija je već poništena ili je kompenzacijska.')
             transactions=rows(db,'SELECT * FROM nutrition_inventory_transactions WHERE operation_id=?',(operation_id,))
             for t in transactions:

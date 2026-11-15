@@ -96,3 +96,11 @@ Kandidat `GPS-20261115-nutrition-chart-empty-03` pripremljen je za review. Ručn
 ### Aktivacija Nutrition Chart Empty State — 15. 11. 2026.
 
 `GPS-20261115-nutrition-chart-empty-03` aktiviran je uz izričito korisničko odobrenje. Prethodni PID 20888 zaustavljen je prije isporuke. Novi PID 17152 sluša na 127.0.0.1:8787. Posluženo je 20/20 datoteka s odobrenim hashovima. SQLite v12 prolazi provjere integriteta i stranih veza, a sadržaj svih 36 tablica očuvan je. Health, Nutrition profil/dashboard i arhivirana zdravstvena povijest vraćaju HTTP 200. Prethodni frontend, kod i nova konzistentna kopija baze sačuvani su izvan rotacije. Ručna provjera čitačem zaslona ostaje otvorena. Novi zapis je `releases/GPS-20261115-nutrition-chart-empty-03/local-activation-20261115.json`; raniji statusi kandidata opisuju stanje prije aktivacije.
+
+### NUTRITION-USDA-ENTRY-01 · spremno za pregled
+
+U obrascu **Zalihe → Nova namirnica** moguće je pretražiti USDA, pregledati vrijednosti na 100 g i primijeniti ih prije spremanja. Zasebni USDA odjeljak otvara isti obrazac. Katalog razlikuje izvorne vrijednosti i lokalne korekcije, a ponovljeni FDC zapis traži svjestan izbor. Postojeći API za potvrđeni uvoz ostaje dostupan. Produkcijska aktivacija čeka zasebno odobrenje.
+
+### Aktivacija USDA unosa · 15. 11. 2026.
+
+GPS-20261115-nutrition-usda-entry-01 aktiviran je uz korisničko odobrenje. PID 8520, port 8787. Provjereno 20/20 frontend hashova, SQLite v12 i očuvanje 36 tablica. Python 122/122, ciljani Chromium 8/8, pnpm check i izdvojeni build prolaze. USDA provjere koriste simulirane odgovore. Evidencija je u releases/GPS-20261115-nutrition-usda-entry-01/local-activation.json.

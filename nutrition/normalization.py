@@ -9,7 +9,7 @@ def nutrition_metadata(data):
     metadata.setdefault('basis', '100g')
     metadata.setdefault('carbDefinition', 'unknown')
     metadata.setdefault('energyMethod', 'unknown')
-    if not metadata.get('originalValues'):
+    if not metadata.get('originalValues') and not metadata.get('usda'):
         metadata['originalValues'] = [
             {'nutrientId': key, 'value': str(value), 'unit': 'kcal' if key == 'kcal' else 'g'}
             for key, value in data['nutrients'].items() if value is not None

@@ -29,7 +29,16 @@ class NutrientObservation(Input):
     name: str = Field(default='', max_length=200)
 
 
+class UsdaSource(Input):
+    description: str = Field(min_length=1, max_length=1000)
+    dataType: str = Field(min_length=1, max_length=100)
+    nutrients: Nutrients
+    carbDefinition: str
+    energyMethod: str
+
+
 class NutritionData(Input):
+    usda: UsdaSource | None = None
     schemaVersion: Literal[1] = 1
     basis: Literal['100g'] = '100g'
     carbDefinition: Literal['eu_available', 'total_including_fiber', 'unknown'] = 'unknown'
@@ -79,6 +88,15 @@ class Food(Input):
     sourceId: str | None = Field(None, max_length=150)
     expectedVersion: int = Field(1, ge=1)
     nutritionData: NutritionData | None = None
+
+    @model_validator(mode='after')
+    def check_usda_basis(self):
+        if self.nutritionData and self.nutritionData.usda:
+            if not self.sourceId or not self.sourceId.isdecimal() or not self.source.startswith('USDA FoodData Central'):
+                raise ValueError('Nedostaje valjan identifikator USDA izvora.')
+            if self.unit != 'g' and not self.gramsPerUnit:
+                raise ValueError('Za USDA unos upiši potvrđenu masu po inventarnoj jedinici.')
+        return self
 
 
 class Receipt(Input):

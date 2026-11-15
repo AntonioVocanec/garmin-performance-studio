@@ -57,7 +57,12 @@ def create_router(core):
     def foods(): return read(service.foods)
 
     @router.post('/foods', response_model=Response[m.FoodResponse])
-    def create_food(body: m.Food): return run(lambda: service.save_food(body.model_dump()))
+    def create_food(body: m.Food, allowDuplicate: bool = False,
+                    idempotency_key: Annotated[str | None, Header(alias='Idempotency-Key')] = None):
+        data = body.model_dump()
+        if body.nutritionData and body.nutritionData.usda:
+            return run(lambda: service.create_reviewed_food(data, idempotency_key, allowDuplicate))
+        return run(lambda: service.save_food(data))
 
     @router.patch('/foods/{food_id}', response_model=Response[m.FoodResponse])
     def update_food(food_id: str, body: m.Food): return run(lambda: service.save_food(body.model_dump(), food_id))

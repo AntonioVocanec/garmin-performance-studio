@@ -6,7 +6,10 @@ export interface CookingPreview {
  missing:{name:string;quantity:string;unit:string}[];
  issues:{code:string;message:string}[];warnings:string[];
 }
-export interface NutritionData {schemaVersion?:number;basis?:string;carbDefinition?:string;energyMethod?:string;originalValues?:{nutrientId:string;value:string|null;unit:string;name?:string}[]}
+export interface UsdaSource {description:string;dataType:string;nutrients:Nutrients;carbDefinition:string;energyMethod:string}
+export interface UsdaHit {sourceId:string;name:string;dataType?:string;brand?:string}
+export interface UsdaDraft {sourceId:string;source:string;nutrients:Nutrients;micronutrients:Record<string,{value:string;unit:string}>;nutritionData:NutritionData & {usda:UsdaSource}}
+export interface NutritionData {usda?:UsdaSource;schemaVersion?:number;basis?:string;carbDefinition?:string;energyMethod?:string;originalValues?:{nutrientId:string;value:string|null;unit:string;name?:string}[]}
 export interface NutritionComparison {comparableNutrients?:Nutrients;carbComparison?:string}
 export const comparisonNutrients=(value:{nutrients:Nutrients}&NutritionComparison):Nutrients=>value.comparableNutrients??{...value.nutrients,carbs:null};
 export const carbExplanation=(status?:string):string=>status==='exact'?'UH prema potvrđenoj EU definiciji':status==='estimated'?'UH su procjena nakon oduzimanja potvrđenih vlakana; mogu odstupati od EU deklaracije.':'Usporedba UH s ciljem nije dostupna jer definicija ili podaci nisu potvrđeni.';

@@ -1,0 +1,20 @@
+{
+  "releaseId": "GPS-20261115-nutrition-usda-entry-01",
+  "pid": 8520,
+  "previousPid": 17152,
+  "schema": 12,
+  "tablesPreserved": 36,
+  "frontendHashesVerified": 20,
+  "smokeHTTP200": [
+    "/",
+    "/api/health",
+    "/api/nutrition/profile",
+    "/api/nutrition/foods",
+    "/api/nutrition/dashboard?date=2026-11-15",
+    "/api/analytics/health?start=2026-11-09&end=2026-11-15"
+  ],
+  "apiContract": "PASS",
+  "backupDirectory": "C:\\Users\\carti\\Documents\\ChatGPT\\GarminActivationBackups\\GPS-usda-entry-20261115-215710",
+  "usdaLiveSearch": "not tested, no external call",
+  "activatedAt": "2026-11-15T21:57:44.314243"
+}

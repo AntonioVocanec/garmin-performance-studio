@@ -103,13 +103,14 @@ for (const change of ['date', 'portions', 'navigation']) {
 test('USDA ignores results for an edited query', async ({ page }) => {
   await setup(page, 'inventory');
   await page.locator('.nutrition summary').filter({ hasText: 'Provjereni nutritivni izvori' }).click();
-  await page.getByLabel('Pretraži USDA').fill('apple');
+  await page.getByRole('button', {name:'Otvori USDA pretragu u obrascu'}).click();
+  await page.getByLabel('Upit za USDA').fill('apple');
   const release = await defer(page, '**/api/nutrition/food-search?**', route => route.fulfill({ json: {
     ok: true, data: [{ sourceId: '123', name: 'ZASTARJELI USDA REZULTAT' }] } }));
   const sent = page.waitForRequest('**/api/nutrition/food-search?**');
-  await page.getByRole('button', { name: 'Pretraži vanjski izvor' }).click();
+  await page.getByRole('button', { name: 'Pretraži USDA', exact:true }).click();
   await sent;
-  await page.getByLabel('Pretraži USDA').fill('pear');
+  await page.getByLabel('Upit za USDA').fill('pear');
   release();
   await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy', 'false');
   await expect(page.locator('.nutrition')).not.toContainText('ZASTARJELI USDA REZULTAT');

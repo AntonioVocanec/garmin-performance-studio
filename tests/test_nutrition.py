@@ -340,9 +340,88 @@ class NutritionTests(unittest.TestCase):
                                initialize_archive=lambda:None, ENV={'USDA_API_KEY':'synthetic'},
                                OPENAI_API_KEY='', OPENAI_LAB_MODEL='synthetic')
         endpoint = next(r.endpoint for r in create_router(core).routes if r.path.endswith('/food-imports'))
-        payload = {'description':'Synthetic USDA', 'dataType':data_type, 'foodNutrients':nutrient_rows}
+        payload = {'fdcId':123, 'description':'Synthetic USDA', 'dataType':data_type, 'foodNutrients':nutrient_rows}
         with patch('nutrition.providers.usda.urlopen', return_value=BytesIO(json.dumps(payload).encode())):
             return endpoint(FoodImport(sourceId=123, state='dry', confirmed=True))['data']
+
+    def test_usda_reviewed_create_preserves_source_and_requires_duplicate_consent(self):
+        from nutrition.routes import create_router
+        from pydantic import ValidationError
+        core = SimpleNamespace(archive_connection=self.connection, iso_today=self.service.today,
+            initialize_archive=lambda:None, ENV={'USDA_API_KEY':'synthetic'},
+            OPENAI_API_KEY='', OPENAI_LAB_MODEL='synthetic')
+        routes = create_router(core).routes
+        preview = next(r.endpoint for r in routes if r.path.endswith('/preview') and 'food-imports' in r.path)
+        create = next(r.endpoint for r in routes if r.path.endswith('/foods') and 'POST' in r.methods)
+        detail = {'fdcId':123, 'description':'Synthetic oats', 'dataType':'Branded', 'foodNutrients':[
+            {'nutrient':{'id':1008,'unitName':'kcal'},'amount':300},
+            {'nutrient':{'id':1089,'name':'Iron, Fe','unitName':'MG'},'amount':4}]}
+        with patch('nutrition.providers.usda.urlopen', return_value=BytesIO(json.dumps(detail).encode())) as fetch:
+            draft = preview(123)['data']
+            self.assertIn('/food/123?', fetch.call_args.args[0])
+        with self.connection() as db:
+            self.assertEqual(len(self.service.foods(db)),1)
+        self.assertIsNone(draft['nutrients']['fiber'])
+        self.assertEqual(draft['nutritionData']['carbDefinition'],'unknown')
+        self.assertEqual(draft['micronutrients']['Iron, Fe'],{'value':'4','unit':'mg'})
+        self.assertFalse(draft['allergensKnown'])
+        self.assertEqual(draft['state'],'label')
+        draft.update(name='Zobene pahuljice',state='dry')
+        draft['nutrients']['kcal']='313'
+        for unit in ['ml','piece']:
+            with self.assertRaises(ValidationError):
+                Food(**{**draft, 'unit':unit})
+            self.assertEqual(Food(**{**draft,'unit':unit,'gramsPerUnit':'12'}).nutrients.kcal,313)
+        body=Food(**draft)
+        first=create(body,False,'review-1')['data']
+        self.assertEqual(first,create(body,False,'review-1')['data'])
+        with self.assertRaises(DomainError):
+            self.service.reverse('invalid-inventory-undo', first['operationId'])
+        self.assertEqual(first['nutritionData']['usda']['nutrients']['kcal'],'300')
+        self.assertEqual(first['nutritionData']['originalValues'][0]['value'],'300')
+        self.assertEqual(first['nutrients']['kcal'],'313')
+        self.assertEqual(first['nutritionData']['usda']['description'],'Synthetic oats')
+        self.assertEqual(first['name'],'Zobene pahuljice')
+        with self.assertRaises(HTTPException) as conflict:
+            create(body,False,'review-2')
+        self.assertEqual(conflict.exception.status_code,409)
+        self.assertNotEqual(first['id'],create(body,True,'review-3')['data']['id'])
+        with self.connection() as db:
+            self.assertEqual(len(self.service.foods(db)),3)
+            self.assertEqual(db.execute('SELECT count(*) FROM nutrition_inventory_lots').fetchone()[0],0)
+            self.assertEqual(db.execute('SELECT count(*) FROM nutrition_food_log_entries').fetchone()[0],0)
+
+    def test_usda_bad_detail_and_failed_search_leave_catalog_intact(self):
+        from nutrition.routes import create_router
+        core = SimpleNamespace(archive_connection=self.connection, iso_today=self.service.today,
+            initialize_archive=lambda:None, ENV={'USDA_API_KEY':'synthetic'},
+            OPENAI_API_KEY='', OPENAI_LAB_MODEL='synthetic')
+        routes=create_router(core).routes
+        search=next(r.endpoint for r in routes if r.path.endswith('/food-search'))
+        preview=next(r.endpoint for r in routes if 'food-imports/' in r.path)
+        for payload in [{}, {'fdcId':999,'description':'Wrong food','foodNutrients':[]}, []]:
+            with patch('nutrition.providers.usda.urlopen',return_value=BytesIO(json.dumps(payload).encode())):
+                with self.assertRaises(HTTPException) as error:
+                    preview(123)
+                self.assertEqual(error.exception.status_code,422)
+        from urllib.parse import parse_qs, urlsplit
+        hit = {'fdcId':123, 'description':'Oats', 'dataType':'Branded', 'brandOwner':'Test brand'}
+        with patch('nutrition.providers.usda.urlopen',return_value=BytesIO(json.dumps({'foods':[hit]}).encode())) as network:
+            result=search('rolled oats')['data'][0]
+            self.assertEqual((result['sourceId'],result['dataType'],result['brand']),('123','Branded','Test brand'))
+            query=parse_qs(urlsplit(network.call_args.args[0]).query)
+            self.assertEqual(set(query),{'query','pageSize','api_key'})
+            self.assertEqual(query['query'],['rolled oats'])
+        with patch('nutrition.providers.usda.urlopen',side_effect=TimeoutError):
+            with self.assertRaises(HTTPException) as error:
+                search('rolled oats')
+            self.assertEqual(error.exception.status_code,503)
+        with patch('nutrition.providers.usda.urlopen',return_value=BytesIO(b'{}')):
+            with self.assertRaises(HTTPException) as error:
+                search('rolled oats')
+            self.assertEqual(error.exception.status_code,502)
+        with self.connection() as db:
+            self.assertEqual(len(self.service.foods(db)),1)
 
     def test_usda_energy_methods_are_supported(self):
         for nutrient_id in (1008, 2047, 2048):

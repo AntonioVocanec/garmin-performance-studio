@@ -1,6 +1,8 @@
 <script lang="ts">
- import {nutritionApi,type Food,type Recipe} from '../lib/nutritionApi';
- let {mode,foods,onchange,recipe=null,food=null}:{mode:'food'|'recipe';foods:Food[];onchange:()=>Promise<void>;recipe?:Recipe|null;food?:Food|null}=$props();
+ import UsdaFoodPicker from './UsdaFoodPicker.svelte';
+ import {DashboardApiError} from '../lib/api';
+ import {nutritionApi,type Food,type Recipe,type UsdaDraft} from '../lib/nutritionApi';
+ let {mode,foods,onchange,recipe=null,food=null,showLookup=false,onexisting,onrefresh}:{mode:'food'|'recipe';foods:Food[];onchange:()=>Promise<void>;recipe?:Recipe|null;food?:Food|null;showLookup?:boolean;onexisting?:(f:Food)=>void;onrefresh?:()=>Promise<void>}=$props();
  let name=$state(''),source=$state(''),foodState=$state('label'),unit=$state('g'),grams=$state(''),minimum=$state('0'),allergens=$state(''),tags=$state(''),known=$state(false);
  let micros=$state<{name:string;value:string;unit:string}[]>([]);
  const nutrientLabels:Record<string,string>={kcal:'Energija · kcal',protein:'Proteini · g',carbs:'Ugljikohidrati · g',fat:'Masti · g',fiber:'Vlakna · g'};
@@ -9,28 +11,49 @@
  let ingredients=$state<{foodId:string;quantity:string;optional:boolean}[]>([]);let error=$state('');let busy=$state(false);
  let carbDefinition=$state('unknown'),energyMethod=$state('declared');
  $effect(()=>{carbDefinition=food?.nutritionData?.carbDefinition??'unknown';energyMethod=food?.nutritionData?.energyMethod??'declared'});
+ let draft=$state<UsdaDraft|null>(null),allowDuplicate=$state(false);
+ const provenance=$derived(draft?.nutritionData ?? food?.nutritionData);
+ const matches=$derived(draft ? foods.filter(f=>f.sourceId===draft?.sourceId && f.source?.startsWith('USDA FoodData Central')) : []);
+ function applyDraft(next:UsdaDraft){
+  const previous=draft;
+  draft=next; allowDuplicate=false; source=next.source; known=false;
+  nutrients=Object.fromEntries(Object.entries(next.nutrients).map(([key,value])=>[key,value??'']));
+  micros=[...micros.filter(m=>!Object.hasOwn(next.micronutrients,m.name) && !Object.hasOwn(previous?.micronutrients??{},m.name)),
+         ...Object.entries(next.micronutrients).map(([name,m])=>({name,...m}))];
+  carbDefinition=next.nutritionData.carbDefinition??'unknown';
+  energyMethod=next.nutritionData.energyMethod??'unknown';
+ }
  function nutritionData(){
+  if(provenance?.usda) return {usda:provenance.usda,originalValues:provenance.originalValues??[],carbDefinition,energyMethod};
   const sameValues=food&&Object.entries(nutrients).every(([key,value])=>value===''?food.nutrients[key as keyof typeof food.nutrients]===null:Number(value.replace(',','.'))===Number(food.nutrients[key as keyof typeof food.nutrients]));
   const preserve=sameValues&&carbDefinition===food?.nutritionData?.carbDefinition&&energyMethod===food?.nutritionData?.energyMethod;
   return {carbDefinition,energyMethod,originalValues:preserve?food?.nutritionData?.originalValues??[]:[]};
  }
  $effect(()=>{if(recipe){name=recipe.name;portions=recipe.portions;minutes=String(recipe.minutes);method=recipe.method;category=recipe.category;steps=recipe.steps.join('\n');tags=recipe.tags.join(', ');ingredients=recipe.ingredients.map(i=>({...i}))}else if(food){name=food.name;source=food.source;foodState=food.state;unit=food.unit;grams=food.gramsPerUnit??'';minimum=food.minimumQuantity;allergens=food.allergens.join(', ');tags=food.dietaryTags.join(', ');known=food.allergensKnown;micros=Object.entries(food.micronutrients??{}).map(([name,m])=>({name,value:m.value,unit:m.unit}));nutrients=Object.fromEntries(Object.entries(food.nutrients).map(([k,v])=>[k,v??'']))}});
- async function save(e:SubmitEvent){e.preventDefault();error='';busy=true;try{
- if(mode==='food'){await nutritionApi(food?`/foods/${food.id}`:'/foods',food?'PATCH':'POST',{name,state:foodState,unit,gramsPerUnit:grams||null,minimumQuantity:minimum,allergens:allergens.split(',').map(x=>x.trim()).filter(Boolean),allergensKnown:known,dietaryTags:tags.split(',').map(x=>x.trim()).filter(Boolean),nutrients:Object.fromEntries(Object.entries(nutrients).map(([k,v])=>[k,v||null])),source,sourceId:food?.sourceId??null,nutritionData:nutritionData(),micronutrients:Object.fromEntries(micros.filter(m=>m.name).map(m=>[m.name,{value:m.value,unit:m.unit}])),expectedVersion:food?.version??1})}
+ async function save(e:SubmitEvent){e.preventDefault();if(busy || (matches.length && !allowDuplicate))return;error='';busy=true;try{
+ if(mode==='food'){await nutritionApi(food?`/foods/${food.id}`:allowDuplicate?'/foods?allowDuplicate=true':'/foods',food?'PATCH':'POST',{name,state:foodState,unit,gramsPerUnit:grams||null,minimumQuantity:minimum,allergens:allergens.split(',').map(x=>x.trim()).filter(Boolean),allergensKnown:known,dietaryTags:tags.split(',').map(x=>x.trim()).filter(Boolean),nutrients:Object.fromEntries(Object.entries(nutrients).map(([k,v])=>[k,v||null])),source,sourceId:draft?.sourceId??food?.sourceId??null,nutritionData:nutritionData(),micronutrients:Object.fromEntries(micros.filter(m=>m.name).map(m=>[m.name,{value:m.value,unit:m.unit}])),expectedVersion:food?.version??1})}
  else {await nutritionApi(recipe?`/recipes/${recipe.id}`:'/recipes',recipe?'PATCH':'POST',{name,portions,minutes:Number(minutes),method,category,steps:steps.split('\n').filter(Boolean),ingredients,tags:tags.split(',').map(x=>x.trim()).filter(Boolean),expectedVersion:recipe?.version??1})}
  await onchange();if(!recipe&&!food){name='';ingredients=[];steps=''}
- }catch(e){error=e instanceof Error?e.message:String(e)}finally{busy=false}}
+ }catch(e){error=e instanceof Error?e.message:String(e);if(draft && e instanceof DashboardApiError && e.status===409)await onrefresh?.()}finally{busy=false}}
 </script>
 <form class="nutrition-form" onsubmit={save}>
  <div class="nutrition-fields"><label>Naziv<input required maxlength="150" bind:value={name}/></label>
  {#if mode==='food'}
+ {#if !food && showLookup}<UsdaFoodPicker {name} {nutrients} labels={nutrientLabels} apply={applyDraft}/>{/if}
+ {#if provenance?.usda}
+ <div class="nutrition-wide nutrition-notice"><b>{provenance.usda.description}</b><p>{provenance.usda.dataType} · FDC {draft?.sourceId??food?.sourceId} · USDA /100 g</p>
+ <p class="quiet">Provjeri stanje i sastav na svojem proizvodu. Polja možeš ispraviti prije spremanja.</p>
+ {#if matches.length}<p>Ovaj FDC zapis već postoji u katalogu.</p>
+ {#each matches as existing}<button type="button" class="btn" onclick={()=>onexisting?.(existing)}>Odaberi postojeći zapis · {existing.name}</button>{/each}
+ <label class="nutrition-check"><input type="checkbox" bind:checked={allowDuplicate}/>Želim spremiti zasebnu namirnicu s istim FDC zapisom</label>{/if}</div>
+ {/if}
  <label>Stanje<select bind:value={foodState}><option value="label">Kako je deklarirano</option><option value="raw">Sirovo</option><option value="cooked">Kuhano</option><option value="dry">Suho</option></select></label>
  <label>Inventarna jedinica<select bind:value={unit}><option value="g">g</option><option value="ml">ml</option><option value="piece">kom</option></select></label>
- {#if unit!=='g'}<label>Grama po {unit==='ml'?'ml':'komadu'}<input inputmode="decimal" bind:value={grams}/></label>{/if}
- <label>Minimalna zaliha<input inputmode="decimal" bind:value={minimum}/></label><label>Izvor podataka<input required maxlength="300" bind:value={source} placeholder="Deklaracija proizvoda / provjereni izvor"/></label>
+ {#if unit!=='g'}<label>Grama po {unit==='ml'?'ml':'komadu'}<input required={Boolean(provenance?.usda)} inputmode="decimal" bind:value={grams}/></label>{/if}
+ <label>Minimalna zaliha<input inputmode="decimal" bind:value={minimum}/></label><label>Izvor podataka<input required readonly={Boolean(provenance?.usda)} maxlength="300" bind:value={source} placeholder="Deklaracija proizvoda / provjereni izvor"/></label>
  <label>Definicija ugljikohidrata<select bind:value={carbDefinition}><option value="unknown">Nije potvrđena</option><option value="eu_available">EU deklaracija · UH odvojeni od vlakana</option><option value="total_including_fiber">Ukupni UH uključuju vlakna · potvrđeno na izvoru</option></select></label>
  <label>Metoda energije<select bind:value={energyMethod}><option value="declared">Deklarirana energija</option><option value="unknown">Nepoznata metoda</option><option value="usda_1008">USDA 1008</option><option value="atwater_general">Atwater opći faktori</option><option value="atwater_specific">Atwater specifični faktori</option></select></label>
- {#each Object.keys(nutrients) as k}<label>{nutrientLabels[k]} na 100 g<input inputmode="decimal" bind:value={nutrients[k]} placeholder="Nepoznato"/></label>{/each}
+ {#each Object.keys(nutrients) as k}<label>{nutrientLabels[k]} na 100 g<input inputmode="decimal" bind:value={nutrients[k]} oninput={()=>{if(k==='kcal' && provenance?.usda)energyMethod='unknown'}} placeholder="Nepoznato"/></label>{/each}
  <label>Alergeni (zarez)<input bind:value={allergens}/></label><label>Potvrđene prehrambene oznake<input bind:value={tags} placeholder="vegetarijansko, bez jaja"/></label>
  <label class="nutrition-check"><input type="checkbox" bind:checked={known}/>Sastav i alergeni provjereni na izvoru</label>
  {:else}
@@ -43,5 +66,5 @@
  {#each ingredients as item,i}<div class="nutrition-ingredient"><label>Namirnica<select required bind:value={item.foodId}><option value="">Odaberi</option>{#each foods as f}<option value={f.id}>{f.name} · {f.unit} · {f.state}</option>{/each}</select></label><label>Količina<input required inputmode="decimal" bind:value={item.quantity}/></label><button type="button" class="btn" onclick={()=>ingredients=ingredients.filter((_,j)=>j!==i)}>Ukloni</button></div>{/each}
  <button type="button" class="btn" onclick={()=>ingredients.push({foodId:'',quantity:'100',optional:false})}>Dodaj sastojak</button>
  <label>Koraci · svaki u novom retku<textarea required rows="5" bind:value={steps}></textarea></label>{/if}
- {#if error}<p class="error" role="alert">{error}</p>{/if}<button class="btn" disabled={busy}>{food||recipe?'Spremi novu verziju':'Spremi'}</button>
+ {#if error}<p class="error" role="alert">{error}</p>{/if}<button class="btn" disabled={busy || (matches.length>0 && !allowDuplicate)}>{food||recipe?'Spremi novu verziju':'Spremi'}</button>
 </form>

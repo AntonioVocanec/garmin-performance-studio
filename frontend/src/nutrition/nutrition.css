@@ -4,3 +4,6 @@
   font-size: 12px;
   line-height: 1.5;
 }
+.usda-picker { grid-column: 1 / -1; min-width: 0; }
+.usda-picker .nutrition-actions { align-items: end; }
+.usda-picker .nutrition-actions label { flex: 1 1 180px; }
