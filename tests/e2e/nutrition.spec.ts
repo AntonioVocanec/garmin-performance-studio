@@ -1,0 +1,184 @@
+import {expect,test} from '@playwright/test';
+import {mockDashboardApi} from './fixtures';
+
+test('nutrition AI budgets explain limits and save valid integers and cleared limits',async({page,request})=>{
+ await mockDashboardApi(page);
+ await page.route('**/api/nutrition/energy**',r=>r.fulfill({json:{ok:true,data:{status:'unavailable',history:[]}}}));
+ await page.goto('/#nutrition-overview');
+ const summary=page.locator('.nutrition summary').filter({hasText:'Profil i ciljevi prehrane'});
+ await summary.click();
+ const requests=page.getByRole('textbox',{name:'AI · najviše poziva dnevno',exact:true});
+ const tokens=page.getByRole('textbox',{name:'AI · dnevni budžet tokena',exact:true});
+ await requests.fill('101');await tokens.fill('50000');
+ await page.getByRole('button',{name:'Spremi profil',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('0–100');
+ await requests.fill('3');
+ await page.getByRole('button',{name:'Spremi profil',exact:true}).click();
+ await expect(requests).toBeHidden();
+ let profile=(await (await request.get('/api/nutrition/profile')).json()).data;
+ expect(profile.aiDailyRequests).toBe(3);expect(profile.aiDailyTokens).toBe(50000);
+ await summary.click();await tokens.fill('50.000');
+ await page.getByRole('button',{name:'Spremi profil',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('bez separatora');
+ await tokens.fill('');
+ await page.getByRole('button',{name:'Spremi profil',exact:true}).click();
+ await expect(tokens).toBeHidden();
+ profile=(await (await request.get('/api/nutrition/profile')).json()).data;
+ expect(profile.aiDailyTokens).toBe(0);expect(profile.aiDailyRequests).toBe(3);
+});
+
+test('meal prep refreshes changed preview and commits only selected optional ingredients',async({page,request})=>{
+ await mockDashboardApi(page);
+ await page.route('**/api/nutrition/energy**',r=>r.fulfill({json:{ok:true,data:{status:'unavailable',history:[]}}}));
+ const call=async(path:string,body:unknown)=>{
+  const r=await request.post('/api/nutrition'+path,{data:body,headers:{'Idempotency-Key':crypto.randomUUID()}});
+  expect(r.ok(),await r.text()).toBeTruthy();return (await r.json()).data;
+ };
+ const food=await call('/foods',{name:'Prep test '+crypto.randomUUID(),source:'Synthetic',nutrients:{kcal:400}});
+ await call('/inventory/receipts',{foodId:food.id,quantity:500,location:'pantry',expiresOn:'2099-12-01'});
+ const recipe=await call('/recipes',{name:'Optional prep '+crypto.randomUUID(),portions:1,minutes:5,
+  ingredients:[{foodId:food.id,quantity:50},{foodId:food.id,quantity:20,optional:true}],steps:['Mix.']});
+ await page.setViewportSize({width:390,height:844});await page.goto('/#nutrition-prep');
+ await page.getByRole('combobox',{name:'Recept',exact:true}).selectOption(recipe.versionId);
+ await page.getByLabel('Porcije',{exact:true}).fill('1');
+ await page.getByLabel('Rok gotovog jela',{exact:true}).fill('2099-11-16');
+ const preview=page.getByRole('button',{name:'Provjeri pripremu',exact:true});
+ const commit=page.getByRole('button',{name:'Potvrdi kuhanje i potrošnju sastojaka',exact:true});
+ await preview.click();await expect(commit).toBeEnabled();
+ await expect(page.locator('.nutrition-notice').filter({has:commit})).toContainText('200 kcal');
+ await call('/inventory/receipts',{foodId:food.id,quantity:10,location:'pantry',expiresOn:'2099-12-01'});
+ await commit.click();await expect(page.getByRole('alert')).toContainText('Osvježi pregled');
+ await expect(commit).toHaveCount(0);
+ await page.getByRole('checkbox',{name:/Uključi opcionalni sastojak/}).check();
+ await preview.click();await expect(commit).toBeEnabled();
+ await expect(page.locator('.nutrition-notice').filter({has:commit})).toContainText('280 kcal');
+ await commit.click();
+ await expect(page.locator('.nutrition')).toContainText('Kuhanje je potvrđeno');
+ const stock=(await (await request.get('/api/nutrition/inventory')).json()).data;
+ expect(stock.filter((l:{food_id:string})=>l.food_id===food.id).reduce((n:number,l:{quantity:string})=>n+Number(l.quantity),0)).toBe(440);
+ const batches=(await (await request.get('/api/nutrition/prep/batches')).json()).data;
+ const batch=batches.map((b:{snapshot_json:string})=>JSON.parse(b.snapshot_json)).find((b:{name:string})=>b.name===recipe.name);
+ expect(batch.nutrients.kcal).toBe('280');expect(batch.ingredients).toHaveLength(2);
+});
+
+test('nutrition distinguishes reported carbs from comparable EU targets and unknown definitions',async({page,request})=>{
+ await mockDashboardApi(page);
+ await page.route('**/api/nutrition/energy**',r=>r.fulfill({json:{ok:true,data:{status:'unavailable',history:[]}}}));
+ const date='2020-01-04';
+ const call=async(path:string,body:unknown,method='POST')=>{
+  const response=await request.fetch('/api/nutrition'+path,{method,data:body,headers:{'Idempotency-Key':crypto.randomUUID()}});
+  expect(response.ok(),await response.text()).toBeTruthy();return (await response.json()).data;
+ };
+ // Playwright's isolated database persists between runs. Clear this scenario's synthetic day.
+ const existing=(await (await request.get('/api/nutrition/diary?date='+date)).json()).data.entries;
+ for(const entry of existing){
+  await call('/operations/'+entry.operation_id+'/reverse',{});
+ }
+ const profile=(await (await request.get('/api/nutrition/profile')).json()).data;
+ await call('/profile',{effectiveDate:date,expectedVersion:profile.version,carbs:200},'PUT');
+ const food=await call('/foods',{name:'Synthetic total '+crypto.randomUUID(),source:'Synthetic confirmed source',
+  nutrients:{kcal:350,carbs:70,fiber:10},nutritionData:{carbDefinition:'total_including_fiber'}});
+ await call('/diary/entries',{date,meal:'lunch',kind:'food',sourceId:food.id,quantity:100});
+ await page.goto('/#nutrition-overview');
+ await page.locator('#date').fill(date);await page.locator('#date').dispatchEvent('change');
+ const macros=page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'Makronutrijenti',exact:true})});
+ await expect(macros).toContainText('60 / 200 g');
+ await expect(macros).toContainText('procjena');
+ await page.locator('.quick-nav a[href="#nutrition-diary"]').click();
+ await expect(page.locator('.nutrition')).toContainText('UH 70 g');
+ const unknown=await call('/foods',{name:'Synthetic unknown '+crypto.randomUUID(),source:'Synthetic',nutrients:{carbs:5}});
+ await call('/diary/entries',{date,meal:'snack',kind:'food',sourceId:unknown.id,quantity:100});
+ await page.locator('.quick-nav a[href="#nutrition-overview"]').click();
+ await expect(macros).toContainText('— / 200 g');
+ await expect(macros).toContainText('definicija ili podaci nisu potvrđeni');
+});
+
+test('nutrition preserves Garmin navigation and completes local inventory cooking diary flow on mobile',async({page,request})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await mockDashboardApi(page);
+ await page.route('**/api/nutrition/energy**',r=>r.fulfill({json:{ok:true,data:{date:'2026-11-14',status:'unavailable',totalCalories:null,activeCalories:null,restingCalories:null,localEstimate:null,history:[]}}}));
+ const name='Synthetic oats '+crypto.randomUUID();
+ const call=async(path:string,body:unknown)=>{const result=await request.post('/api/nutrition'+path,{data:body,headers:{'Idempotency-Key':crypto.randomUUID()}});expect(result.ok(),await result.text()).toBeTruthy();return (await result.json()).data};
+ const food=await call('/foods',{name,source:'Synthetic label',nutrients:{kcal:'400',protein:'10',carbs:'60',fat:'8',fiber:'5'}});
+ const stock=await call('/inventory/receipts',{foodId:food.id,quantity:'100',location:'pantry',expiresOn:'2099-12-01'});
+ const recipe=await call('/recipes',{name:'Synthetic porridge '+crypto.randomUUID(),portions:'2',minutes:10,ingredients:[{foodId:food.id,quantity:'100'}],steps:['Cook synthetic ingredients.']});
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#nutrition-prep');
+ await expect(page.getByRole('tab',{name:'Prehrana',exact:true})).toHaveAttribute('aria-selected','true');
+ await expect(page.getByRole('heading',{name:'Priprema unaprijed',exact:true})).toBeVisible();
+ const selectedDate=await page.locator('#date').inputValue();
+ await page.getByRole('combobox',{name:'Recept',exact:true}).selectOption(recipe.versionId);
+ await page.getByLabel('Porcije',{exact:true}).fill('2');
+ await page.getByLabel('Rok gotovog jela',{exact:true}).fill('2099-11-16');
+ await page.getByRole('button',{name:'Provjeri pripremu',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Potvrdi kuhanje i potrošnju sastojaka',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Potvrdi kuhanje i potrošnju sastojaka',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Zabilježi konzumaciju',exact:true}).last()).toBeVisible();
+ const lotResponse=await request.get('/api/nutrition/inventory');const lot=(await lotResponse.json()).data.find((l:{name:string})=>l.name===recipe.name);
+ await page.locator('.quick-nav a[href="#nutrition-diary"]').click();
+ await page.getByRole('combobox',{name:'Vrsta',exact:true}).selectOption('portion');
+ await page.getByRole('combobox',{name:'Odaberi',exact:true}).selectOption(lot.id);
+ await page.getByLabel(/Količina ·/).fill('0.5');
+ await page.getByRole('button',{name:'Potvrdi unos',exact:true}).click();
+ await expect(page.locator('.nutrition')).toContainText(recipe.name);
+ const diary=await request.get('/api/nutrition/diary?date='+selectedDate);const entries=(await diary.json()).data.entries;
+ expect(entries.some((e:{name:string;nutrients:{kcal:string}})=>e.name===recipe.name&&Number(e.nutrients.kcal)===100)).toBeTruthy();
+ const dimensions=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:document.documentElement.clientWidth}));expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width+1);
+ await page.locator('.quick-nav a[href="#nutrition-recipes"]').click();await expect(page.getByRole('heading',{name:'Recepti',exact:true})).toBeVisible();
+ await page.goBack();await expect(page.getByRole('heading',{name:'Dnevnik prehrane',exact:true})).toBeVisible();
+ await page.getByRole('tab',{name:'Pregled',exact:true}).click();await expect(page.locator('#today-energy')).toHaveText('70');
+ expect(errors).toEqual([]);
+});
+
+test('nutrition profile starts configurable and shopping receipt is idempotent in the isolated database',async({page,request})=>{
+ await mockDashboardApi(page);
+ await page.route('**/api/nutrition/energy**',r=>r.fulfill({json:{ok:true,data:{status:'unavailable',date:'2026-11-14',totalCalories:null,activeCalories:null,restingCalories:null,localEstimate:null,history:[]}}}));
+ await page.goto('/#nutrition-overview');
+ await page.locator('.nutrition summary').filter({hasText:'Profil i ciljevi prehrane'}).click();
+ await page.getByRole('textbox',{name:'Energija · kcal',exact:true}).fill('2300');
+ await page.getByRole('textbox',{name:'Proteini · g',exact:true}).fill('110');
+ await page.getByRole('textbox',{name:'Ugljikohidrati · g',exact:true}).fill('250');
+ await page.getByRole('button',{name:'Spremi profil',exact:true}).click();
+ await expect(page.locator('.nutrition')).toContainText('Cilj 2.300 kcal');
+ const call=async(path:string,body:unknown,key=crypto.randomUUID())=>{const r=await request.post('/api/nutrition'+path,{data:body,headers:{'Idempotency-Key':key}});expect(r.ok(),await r.text()).toBeTruthy();return (await r.json()).data};
+ const food=await call('/foods',{name:'Synthetic shopping '+crypto.randomUUID(),source:'Synthetic label',nutrients:{kcal:'100'}});
+ const recipe=await call('/recipes',{name:'Synthetic planned '+crypto.randomUUID(),portions:'1',minutes:5,ingredients:[{foodId:food.id,quantity:'100'}],steps:['Prepare.']});
+ const date=await page.locator('#date').inputValue();
+ await call('/plan/entries',{date,meal:'dinner',recipeVersionId:recipe.versionId,portions:'2'});
+ const preview=await call('/shopping/preview',{start:date,end:date});
+ expect(preview.find((i:{foodId:string})=>i.foodId===food.id).quantity).toBe('200');
+ const list=await call('/shopping/lists',{start:date,end:date});
+ const lists=await request.get('/api/nutrition/shopping/lists');const item=(await lists.json()).data.find((l:{id:string})=>l.id===list.id).items.find((i:{food_id:string})=>i.food_id===food.id);
+ const key=crypto.randomUUID(),body={itemId:item.id,quantity:'200',location:'freezer',expiresOn:'2099-12-01',cost:'4.20',expectedVersion:item.version};
+ const first=await call('/shopping/receive',body,key),second=await call('/shopping/receive',body,key);expect(second).toEqual(first);
+ const stock=await request.get('/api/nutrition/inventory');expect((await stock.json()).data.filter((l:{food_id:string})=>l.food_id===food.id)).toHaveLength(1);
+ await page.locator('.quick-nav a[href="#nutrition-shopping"]').click();await expect(page.locator('.nutrition')).toContainText(food.name);
+ await page.setViewportSize({width:360,height:800});
+ const selected=page.locator('.quick-nav a[href="#nutrition-shopping"]');await expect(selected).toHaveAttribute('aria-current','location');
+ await expect.poll(()=>selected.evaluate(a=>{const p=a.parentElement!.getBoundingClientRect(),r=a.getBoundingClientRect();return r.left>=p.left-1&&r.right<=p.right+1})).toBeTruthy();
+ const bounds=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:document.documentElement.clientWidth}));expect(bounds.scroll).toBeLessThanOrEqual(bounds.width+1);
+ await page.screenshot({path:'tmp/nutrition-shopping-mobile.png',fullPage:false});
+});
+
+test('nutrition catalogue and recipe editor create real local records without external providers',async({page})=>{
+ await mockDashboardApi(page);await page.route('**/api/nutrition/energy**',r=>r.fulfill({json:{ok:true,data:{status:'unavailable',history:[]}}}));
+ await page.goto('/#nutrition-inventory');
+ const name='Synthetic manual '+crypto.randomUUID();
+ await page.locator('.nutrition summary').filter({hasText:'Nova namirnica'}).click();
+ await page.getByRole('textbox',{name:'Naziv',exact:true}).fill(name);
+ await page.getByRole('textbox',{name:'Izvor podataka',exact:true}).fill('Synthetic label');
+ await page.getByRole('textbox',{name:'kcal / 100 g',exact:true}).fill('100');
+ await page.getByRole('button',{name:'Spremi',exact:true}).click();
+ await expect(page.getByRole('combobox',{name:'Namirnica',exact:true})).toContainText(name);
+ await page.locator('.quick-nav a[href="#nutrition-recipes"]').click();
+ await page.locator('.nutrition summary').filter({hasText:'Novi recept'}).click();
+ const recipeName='Synthetic edited '+crypto.randomUUID();
+ await page.getByRole('textbox',{name:'Naziv',exact:true}).fill(recipeName);
+ await page.getByRole('textbox',{name:'Broj porcija',exact:true}).fill('2');
+ await page.getByRole('button',{name:'Dodaj sastojak',exact:true}).click();
+ await page.getByRole('combobox',{name:'Namirnica',exact:true}).selectOption({label:name+' · g · label'});
+ await page.getByRole('textbox',{name:'Količina',exact:true}).fill('50');
+ await page.getByRole('textbox',{name:'Koraci · svaki u novom retku',exact:true}).fill('Prepare this synthetic example.');
+ await page.getByRole('button',{name:'Spremi',exact:true}).click();
+ const card=page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:recipeName,exact:true})});await expect(card).toContainText('25 kcal');
+});

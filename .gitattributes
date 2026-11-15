@@ -1,0 +1,32 @@
+* text=auto
+
+*.py text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.svelte text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.webmanifest text eol=lf
+*.svg text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.ps1 text eol=lf
+*.example text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.sqlite3 binary
+
+# Preserve the exact bytes of the two historical release records.
+releases/GPS-20261114-date-consistency-01/release-manifest.json -text -eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+releases/GPS-observed-DGAPXk-y/release-manifest.json -text -eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

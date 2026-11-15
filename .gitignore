@@ -1,0 +1,44 @@
+.env
+.env.*
+!.env.example
+
+# Local Garmin credentials and runtime files
+.garminconnect/
+.garminconnect-*/
+garmin_tokens/
+*.token
+garmin-dashboard.sqlite3
+garmin-dashboard.sqlite3-*
+*.sqlite3
+*.sqlite3-*
+
+# Local build and editor files
+node_modules/
+dist/
+build/
+test-results/
+playwright-report/
+tmp/
+.venv/
+__pycache__/
+.idea/
+.vscode/
+backups/
+
+# Local attachments, captures and private runtime state
+.codex-remote-attachments/
+*.log
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.pem
+*.key
+*.ics
+playwright/.auth/
+storageState.json
+.vite/
+*.tsbuildinfo
+
+# Immutable release binaries are kept separately from the reviewed manifests.
+/releases/*/*.zip

@@ -1,0 +1,25 @@
+{
+  "name": "garmin-performance-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test:e2e": "pnpm build && playwright test",
+    "icons:pwa": "node scripts/generate-pwa-icons.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/node": "^26.6.6",
+    "svelte-check": "^4.7.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.5"
+  },
+  "dependencies": {
+    "echarts": "^6.1.0",
+    "svelte": "^5.57.3"
+  }
+}

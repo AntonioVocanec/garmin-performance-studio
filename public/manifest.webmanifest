@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "Garmin Performance Studio",
+  "short_name": "Garmin Studio",
+  "description": "Osobni Garmin dashboard za trening, oporavak i san.",
+  "lang": "hr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080e12",
+  "theme_color": "#091014",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
