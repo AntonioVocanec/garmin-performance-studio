@@ -1,0 +1,45 @@
+{
+  "releaseId": "GPS-20261115-training-response-01",
+  "status": "PRODUCTION_ACTIVE",
+  "activatedUTC": "2026-11-15T09:48:19.396803+00:00",
+  "pid": 4308,
+  "port": 8787,
+  "sqliteSchema": 12,
+  "userApproval": "2026-11-15: korisnik odobrio provedbu navedenih stavki u produkciji",
+  "manifestSha256": "05bd7878841788a3f7f6e534e4a974d5e1cb1b21df9eafd671fafaa34baabe8c",
+  "archivesSha256": {
+    "source-inputs.zip": "c5fbda1d191b3eaae03faa08169b31d0987ee94737bb1e17255c02fdd825b383",
+    "frontend.zip": "f9a83ddbe5367cc88d3e859ddc09b61d682f2aa6d58bb0ab037e7bd098409bf1"
+  },
+  "backupDirectory": "GarminActivationBackups\\GPS-20261115-analytics-104621",
+  "migration": {
+    "from": 11,
+    "to": 12,
+    "integrity": "ok",
+    "foreignKeys": "PASS",
+    "existingTablesUnchanged": 32
+  },
+  "protectedTablesUnchangedAfterStartupAndSync": 30,
+  "smoke": {
+    "health": "PASS",
+    "servedFiles": 20,
+    "nutritionDashboard": "PASS",
+    "analyticsReadEndpoints": "PASS",
+    "previewContract": "PASS"
+  },
+  "garminSmoke": {
+    "ok": true,
+    "date": "2026-11-15",
+    "availableSources": 20,
+    "totalSources": 20,
+    "contributionsPresent": true
+  },
+  "baselineCommitSha": "7b95de340e2d503939099a5f245299ec7743a827",
+  "candidateCodeCommitted": false,
+  "independentReview": "PENDING; activation expressly authorized by user",
+  "knownLimitations": [
+    "Root development node_modules links remain unrepaired after policy rejection; production serves tested compiled assets.",
+    "v11 application cannot open v12 database; database rollback requires separate review of new real Garmin records.",
+    "No synthetic cooking, inventory consumption, or paid AI requests were performed in production."
+  ]
+}

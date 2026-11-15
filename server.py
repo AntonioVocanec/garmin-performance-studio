@@ -8,6 +8,7 @@ import binascii
 import copy
 import hashlib
 import re
+import sys
 import sqlite3
 import threading
 import time
@@ -103,7 +104,7 @@ _garmin_skin_temp_cache: dict[str, tuple[float, str, dict[str, object]]] = {}
 _archive_lock = threading.RLock()
 ARCHIVE_PATH = Path(os.getenv("GARMIN_DASHBOARD_DB_PATH", str(ROOT / "garmin-dashboard.sqlite3"))).expanduser().resolve()
 BACKUP_DIR = Path(os.getenv("GARMIN_DASHBOARD_BACKUP_DIR", str(ROOT / "backups"))).expanduser().resolve()
-_ARCHIVE_SCHEMA_VERSION = 11
+_ARCHIVE_SCHEMA_VERSION = 12
 _archive_schema_ready = False
 
 
@@ -562,12 +563,13 @@ def safe_garmin_training_call(target: date, force_refresh: bool = False) -> dict
     return cached_call(cache_key, fetch, force_refresh)
 
 
-def safe_garmin_skin_temperature_call(target: date, force_refresh: bool = False) -> dict[str, object]:
+def safe_garmin_skin_temperature_call(target: date, force_refresh: bool = False, *, days: int = 28) -> dict[str, object]:
     """Return Garmin's nightly skin-temperature deviation and its 28-night context."""
     today = iso_today()
     end = min(target, today)
-    start = end - timedelta(days=27)
-    dates = [start + timedelta(days=offset) for offset in range(28)]
+    window = max(1, min(28, days))
+    start = end - timedelta(days=window-1)
+    dates = [start + timedelta(days=offset) for offset in range(window)]
     now = time.time()
     rows_by_date: dict[str, dict[str, object]] = {}
     missing: list[date] = []
@@ -595,7 +597,10 @@ def safe_garmin_skin_temperature_call(target: date, force_refresh: bool = False)
                     key = day.isoformat()
                     try:
                         raw = api.get_daily_sleep(key)
-                    except Exception:
+                    except Exception as exc:
+                        status = getattr(exc, 'status', None) or getattr(exc, 'code', None) or getattr(getattr(exc, 'response', None), 'status_code', None)
+                        if status == 429:
+                            return {'ok': False, 'status': 429, 'message': 'Garmin je ograničio dohvat temperature kože. Nastavi kasnije.'}
                         errors += 1
                         continue
                     payload = raw if isinstance(raw, dict) else {}
@@ -1752,7 +1757,8 @@ def initialize_archive() -> None:
             db.execute("PRAGMA journal_mode=WAL")
             db.execute("PRAGMA synchronous=NORMAL")
             from nutrition.migrations import MIGRATIONS
-            migrations = {1: _migration_1, 2: _migration_2, 3: _migration_3, **MIGRATIONS}
+            from studio_analytics.migrations import migration_12
+            migrations = {1: _migration_1, 2: _migration_2, 3: _migration_3, **MIGRATIONS, 12: migration_12}
             while version < _ARCHIVE_SCHEMA_VERSION:
                 next_version = version + 1
                 migration = migrations.get(next_version)
@@ -3797,6 +3803,17 @@ def build_dashboard(target: date, force_refresh: bool = False) -> dict[str, obje
     })
     trends = daily_trends(results, sleep)
     personal_baseline = personal_recovery_baseline(sleep, normalized_recovery, trends, target)
+    from studio_analytics.recovery import contributions, dated_inputs
+    heart_date = find_value(record_for_date(results.get('heartRate', {}).get('data', {}), str(target)), {'calendardate', 'date'})
+    contribution_sleep, contribution_recovery = dated_inputs(target, sleep, normalized_recovery, trends, heart_date)
+    recovery_contributions = contributions(target, contribution_sleep, sleep_debt, contribution_recovery, personal_baseline, garmin_training, source_status)
+    if archive_ready:
+        try:
+            from studio_analytics.health import store_results, store_activities
+            store_results(sys.modules[__name__], results, start56, target, sleep)
+            store_activities(sys.modules[__name__], activities, results.get('activities', {}), activity_start, target)
+        except sqlite3.Error:
+            archive_write_ok = False
     return {
         "ok": True,
         "date": target.isoformat(),
@@ -3824,6 +3841,7 @@ def build_dashboard(target: date, force_refresh: bool = False) -> dict[str, obje
             "healthSnapshot": health_snapshot,
             "recoveryTrends": trends,
             "personalRecoveryBaseline": personal_baseline,
+            "recoveryContributions": recovery_contributions,
             "fitnessAge": fitness_age,
             "heartRateZones": heart_rate_zones,
             "runnaSchedule": runna_result,

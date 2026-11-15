@@ -187,3 +187,13 @@ Pregled i potvrda koriste isti izračun u nutrition/cooking.py. Izbor optionalIn
 Pregled vraća previewToken. Sučelje šalje taj token pri potvrdi. Potvrda ponovno izračunava plan unutar BEGIN IMMEDIATE. Promjena relevantnih lotova, FEFO raspodjele, zahtjeva ili rasporeda vraća 409 i strukturirane details s uputom za osvježavanje. Neizvediv plan vraća 422. Jedan pregled može potvrditi jednu šaržu, a ponavljanje istog Idempotency-Key vraća spremljeni rezultat. Mrežna greška zadržava zahtjev za siguran ponovni pokušaj. Kod 409/422 sučelje traži novi pregled.
 
 Stari pozivi bez tokena ostaju podržani i provjeravaju svježi plan u transakciji, ali nemaju usporedbu s ranijim pregledom. Nepoznati troškovi utrošenih lotova ostaju nepoznati. Povijesni snapshotovi i SQLite v11 shema se ne prepisuju. Aktivacija ovog koda i builda traži zasebno odobrenje.
+
+### Zdravstvena i trening analitika — kandidat 15. 11. 2026.
+
+Laboratorij → San i oporavak → Osobna baza sadrži zdravstvenu povijest do 365 dana. Pojedini izvori dohvaćaju se na zahtjev u dijelovima do 14 dana; nedostajuća mjerenja ostaju prazna, a ograničenje HTTP 429 zaustavlja daljnje zahtjeve. Sačuvani zapisi nose izvor i vrijeme dohvata. Temperatura kože dohvaća se samo ako je izabrana. Početni dnevni pregled i dalje koristi svoj zadani prozor.
+
+Pregled sadrži šest odvojenih doprinosa oporavku. Prehrana prikazuje unos prema trećinama osobnog Garmin loada samo za potvrđene dnevnike i potpunu povijest treninga. Mjerenja oporavka povezuju se s idućim datumom. Trening & Load → Trendovi nudi usporedbu 2–5 trčanja; prijedlog slične udaljenosti ne potvrđuje GPS rutu. Tjedni osvrt povezuje RPE po aktivnosti s trajanjem i loadom; umor ostaje zaseban dnevni zapis. Nema novih kliničkih pragova ni zajedničkog readiness rezultata.
+
+Kandidat koristi aditivnu SQLite migraciju v11 → v12, s tablicama zdravstvenih opažanja, pokrivenosti izvora i arhiviranih sažetaka aktivnosti. Korisnička baza nije migrirana tijekom razvoja. Prije produkcijskog pokretanja potrebni su zasebno odobrenje, konzistentna kopija v11 i usklađena isporuka backenda i frontenda. Stari backend v11 ne pokretati nad migriranom v12 bazom; za povrat sačuvati novu v12 bazu i pregledati postojeće nove zapise prije zasebne odluke o oporavku baze.
+
+Provjere kandidata koriste `tmp/analytics-verification-20261115` s vlastitim paketima, buildom i testnom bazom. Ispravak starih lokalnih poveznica paketa bio je odbijen sigurnosnom kontrolom (`blocked by policy`) i nije izvršen drugim putem. Povijesni release manifesti i audit čistog checkouta ostaju neizmijenjeni.

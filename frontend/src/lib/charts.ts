@@ -15,14 +15,26 @@ echarts.use([AriaComponent, BarChart, CanvasRenderer, DataZoomComponent, GridCom
 const chartReferenceColor = "#82979f";
 
 /** Nutrition dates are independent of the Performance history-window override. */
-export function renderNutritionSeries(id: string, points: Record<string, unknown>[], series: {key:string;label:string;color:string}[], unit: string): void {
-  const target=prepareTarget(id,points,`Prehrana · ${series.map(s=>s.label).join(', ')} · ${unit}`,220,points.filter(p=>series.some(s=>p[s.key]!=null)).length);
+export function renderNutritionSeries(id: string, points: Record<string, unknown>[], series: {key:string;label:string;color:string}[], unit: string, title='Prehrana'): void {
+  const target=prepareTarget(id,points,`${title} · ${series.map(s=>s.label).join(', ')} · ${unit}`,220,points.filter(p=>series.some(s=>p[s.key]!=null)).length);
   if(!target)return;
-  setChartInspector(target,'Prehrana',points,'date',series.map(s=>({label:s.label,value:p=>valueOf(p,s.key)==null?'—':`${valueOf(p,s.key)?.toLocaleString('hr-HR',{maximumFractionDigits:1})} ${unit}`})));
+  setChartInspector(target,title,points,'date',series.map(s=>({label:s.label,value:p=>valueOf(p,s.key)==null?'—':`${valueOf(p,s.key)?.toLocaleString('hr-HR',{maximumFractionDigits:1})} ${unit}`})));
   const chart=echarts.getInstanceByDom(target);
   chart?.setOption({backgroundColor:'transparent',aria:{enabled:true},tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#94a9ae'}},grid:{left:48,right:16,top:20,bottom:55},xAxis:{type:'category',data:points.map(p=>String(p.date).slice(5)),axisLabel:{color:'#94a9ae'}},yAxis:{type:'value',name:unit,axisLabel:{color:'#94a9ae'},splitLine:{lineStyle:{color:'#24363e'}}},series:series.map(s=>({name:s.label,type:'line',connectNulls:false,data:points.map(p=>p[s.key]??null),lineStyle:{color:s.color,width:2.5},itemStyle:{color:s.color},emphasis:{focus:'series',lineStyle:{width:4}},blur:{lineStyle:{opacity:.15}}}))} as EChartsOption);
   chart?.resize();
   if(chart){bindTimeSeriesInteractions(chart,target,points,'date',undefined,p=>series.map(s=>`${s.label}: ${valueOf(p,s.key)??'—'} ${unit}`).join('; '));bindDateHover(chart,target,points,'date')}
+}
+
+export function renderAnalyticsSeries(id:string,points:Record<string,unknown>[],series:{key:string;label:string;color:string}[],unit:string,title:string):void {
+  renderNutritionSeries(id,points,series,unit,title);
+  const target=document.getElementById(id);
+  if(target){target.setAttribute('aria-label',title);echarts.getInstanceByDom(target)?.setOption({series:series.map(()=>({connectNulls:false,smooth:false,emphasis:{focus:'series',lineStyle:{width:4}},blur:{lineStyle:{opacity:0.25}}}))});}
+}
+
+export function renderRunningOverlay(id:string,runs:{name:string;trace?:Record<string,unknown>[]}[],metric:string):void {
+ const points=runs.flatMap(r=>r.trace??[]);const target=prepareTarget(id,points,'Usporedba trčanja po proteklom vremenu',260,points.filter(p=>p[metric]!=null).length);if(!target)return;
+ const colors=['#69d7ef','#b9a2fa','#d9a6c8','#78bce8','#c6b4e8'];const chart=echarts.getInstanceByDom(target);
+ chart?.setOption({aria:{enabled:true},tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#acbdc4'}},grid:{left:50,right:20,top:30,bottom:70},xAxis:{type:'value',name:'Minute',axisLabel:{color:'#acbdc4',formatter:(s:number)=>(s/60).toFixed(0)}},yAxis:{type:'value',name:metric==='heartRate'?'bpm':'s/km',scale:true,axisLabel:{color:'#acbdc4'},splitLine:{lineStyle:{color:'#29383e'}}},series:runs.map((r,i)=>({name:r.name,type:'line',showSymbol:false,connectNulls:false,lineStyle:{color:colors[i],width:2.5},itemStyle:{color:colors[i]},emphasis:{focus:'series',lineStyle:{width:4}},data:(r.trace??[]).map(p=>[p.elapsedSeconds,p[metric]??null])}))},{notMerge:true});chart?.resize();
 }
 
 type Point = Record<string, unknown>;

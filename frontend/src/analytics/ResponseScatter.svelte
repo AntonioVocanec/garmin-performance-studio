@@ -1,0 +1,7 @@
+<script lang="ts">
+ import {onMount,onDestroy} from 'svelte';
+ let {rows}:{rows:{date:string;durationSeconds:number|null;trainingLoad:number|null;rpe:number|null}[]}=$props();let x=$state('trainingLoad'),ready=$state(false);let charts:typeof import('../lib/charts')|undefined;let host:HTMLElement;
+ onMount(()=>{let disposed=false;void import('../lib/charts').then(c=>{if(!disposed){charts=c;ready=true}});return()=>{disposed=true}});onDestroy(()=>{if(host)charts?.disposeChartsInside(host)});
+ $effect(()=>{if(!ready)return;const points=rows.filter(r=>r.rpe!=null&&(x==='trainingLoad'?r.trainingLoad!=null:r.durationSeconds!=null)).map(r=>({date:r.date,x:(x==='trainingLoad'?r.trainingLoad!:r.durationSeconds!/60),y:r.rpe!}));charts?.renderCorrelationScatter('training-response-chart',points,{xLabel:x==='trainingLoad'?'Garmin load':'Trajanje',yLabel:'RPE aktivnosti',xUnit:x==='trainingLoad'?'load':'min',yUnit:'/10',xColor:'#69d7ef',yColor:'#b9a2fa',xFormat:v=>v.toLocaleString('hr-HR',{maximumFractionDigits:1}),yFormat:v=>String(v),regression:null,sourceLabel:'Garmin aktivnosti + lokalni RPE'})});
+</script>
+<div bind:this={host}><label class="analytics-controls">Usporedi RPE s<select aria-label="Os usporedbe RPE" bind:value={x}><option value="trainingLoad">Garmin loadom</option><option value="durationSeconds">Trajanjem treninga</option></select></label><div id="training-response-chart" class="chart-wrap"></div></div>

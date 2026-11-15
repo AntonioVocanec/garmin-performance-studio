@@ -545,6 +545,8 @@ def frontend_index() -> Path:
 
 from nutrition.routes import create_router as create_nutrition_router
 app.include_router(create_nutrition_router(core))
+from studio_analytics.routes import create_router as create_analytics_router
+app.include_router(create_analytics_router(core, get_activity_detail))
 
 
 @app.get("/", include_in_schema=False)

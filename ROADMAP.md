@@ -19,6 +19,16 @@ Do 2. 11. 2026. dovršeni su radni pogledi i navigacija, dnevni sažetak, intera
 
 ## Otvoreni ciljevi
 
+## Zdravstvena i trening analitika — razvoj 15. 11. 2026.
+
+- [x] ~~Faza 1 — Zdravstvena povijest do 365 dana i pouzdana pokrivenost~~. Lokalno provjereno 15. 11. 2026.: Python 104/104, mobilni E2E 1/1, tipovi i izdvojeni build prolaze. Migracija v12 pripremljena; korisnička baza ostaje v11. Release: `GPS-20261115-health-history-01`.
+- [x] ~~Faza 2 — Odvojeni doprinosi oporavku, bez novog readiness rezultata~~. Lokalno provjereno 15. 11. 2026.: Python 106/106, E2E analitika 2/2, tipovi i build prolaze. Izvori, datumi, baza i pokrivenost po signalu. Release: `GPS-20261115-recovery-contributions-01`.
+- [x] ~~Faza 3 — Prehrana prema treningu i oporavku sljedećeg dana~~. Lokalno provjereno 15. 11. 2026.: Python 109/109, E2E analitika 3/3, tipovi i build prolaze. Potvrđeni dnevnici, trećine loada, prag 5 dana po grupi, D → D+1. Release: `GPS-20261115-nutrition-training-01`.
+- [x] ~~Faza 4 — Ručna usporedba trčanja s prijedlozima sličnih aktivnosti~~. Lokalno provjereno 15. 11. 2026.: Python 111/111, E2E analitika 4/4, tipovi i build prolaze. Odabir 2–5 trčanja, arhivska pretraga, prijedlozi ±10 %, vremensko preklapanje i izričita potvrda rute. Release: `GPS-20261115-running-comparison-01`.
+- [x] ~~Faza 5 — RPE i dnevni umor uz kontekst treninga~~. Lokalno provjereno 15. 11. 2026.: Python 120/120, puni Playwright 49/49, tipovi i izdvojeni build prolaze. RPE po aktivnosti, dnevni umor za D i D+1, sport i pokrivenost, zaseban prikaz nedovoljnih uzoraka. Završna provjera uključuje migraciju v11 → v12, rollback DDL-a, starije odgovore i HTTP 429. Release: `GPS-20261115-training-response-01`.
+
+Faze se označavaju dovršenima nakon lokalnih provjera. Produkcijska aktivacija i migracija korisničke baze zasebni su koraci.
+
 ## Nutrition & Meal Planning — implementacija 14. 11. 2026.
 
 - [x] ~~Faza 1 — Database, Nutrition Engine & Inventory~~: aditivne migracije, prazan profil, verzije nutritivnih izvora, Decimal, FEFO, inventarni promet, transakcije i idempotencija.
@@ -38,3 +48,11 @@ Provjera isporuke: `pnpm check` bez grešaka/upozorenja, produkcijski build, 62 
 - Cijene su iz stvarne lokalne nabave; vanjski maloprodajni adapter nije konfiguriran.
 - Mikronutrijenti se vode uz izvor namirnice; glavni grafovi prikazuju energiju i makronutrijente.
 - Nema izvanmrežnog zapisivanja, automatskih medicinskih/sportskih prehrambenih preporuka ni drag-and-drop ovisnosti.
+
+### Status aktivacije analitike
+
+Svih pet faza implementirano je i provjereno lokalno. Pripremljeni su odvojeni manifesti i paketi svake faze; završni kandidat obuhvaća svih pet. Korisnička baza ostaje v11, produkcija nije pokrenuta i Git commit novih funkcija nije napravljen. Povijesni release manifesti nisu prepisani. Razvojni paketi u korijenu još imaju stare poveznice nakon preimenovanja; popravak je odbijen (`blocked by policy`). Provjere su izvedene nad zasebno instaliranim paketima u izdvojenom direktoriju.
+
+### Produkcijska aktivacija pet faza — 15. 11. 2026.
+
+Svih pet faza aktivirano je uz korisničko odobrenje kao `GPS-20261115-training-response-01`. SQLite v12, PID 4308, port 8787. Integritet i strane veze prolaze, korisnički Nutrition i dnevnički zapisi očuvani, 20/20 posluženih frontend datoteka i 20/20 Garmin izvora provjereno. Prethodni odlomci o čekanju aktivacije opisuju stanje prije ove aktivacije. Sigurnosna zabrana popravka razvojnih poveznica ostaje nerazjašnjena.

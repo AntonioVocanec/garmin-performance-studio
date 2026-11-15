@@ -4,7 +4,7 @@
 | --- | --- | --- | --- | --- | --- |
 | GPS-20261114-date-consistency-01 | 2026-11-14, priprema | READY_FOR_DEPLOYMENT | 1.0.0 | UNKNOWN | 11 |
 | GPS-observed-DGAPXk-y | 2026-11-14, provjera postojeće produkcije | PRODUCTION_ACTIVE | 1.0.0 | UNKNOWN | 11 |
-| GPS-20261114-git-normalization-01 | 2026-11-14, priprema | READY_FOR_DEPLOYMENT | 1.0.0 | UNKNOWN | 11 |
+| GPS-20261114-git-normalization-01 | 2026-11-14, priprema; 2026-11-15, audit | READY_FOR_DEPLOYMENT | 1.0.0 | `7b95de3` (naknadni audit) | 11 |
 
 ## GPS-20261114-date-consistency-01
 
@@ -32,7 +32,7 @@ Za ovaj frontend hotfix spremljen je zaseban statički paket za povrat, s provje
 
 ## Git audit i prvi pregledani commit
 
-Grana `master` nema prvi commit, indeks je prazan i nema konfiguriranog remotea. Interne Codex reference postoje. One ne predstavljaju povijest izdanja. Projekt nema lokalnu datoteku `.gitattributes`. U manifestu kandidata navedene su pojedinačne putanje, njihov status i kontrolni sažeci.
+U izvornom auditu prije 15. 11. 2026. grana `master` nije imala prvi commit, indeks je bio prazan, remote nije bio konfiguriran i projekt nije imao `.gitattributes`. Interne Codex reference nisu predstavljale povijest izdanja. Sljedeće stavke bilježe tadašnji plan; trenutačno Git stanje i rezultate naknadne provjere navodi zaseban odjeljak na kraju dokumenta.
 
 - Pregledati `app.py`, `server.py`, sve Python izvore u `nutrition/` uključujući migracije, `frontend/`, `public/`, korijenski rezervni HTML, projektne skripte i testove. Zajedno uključiti definicije i zaključane verzije ovisnosti, build i Playwright konfiguraciju, pregledane upute i release dokumentaciju.
 - `.gitignore` pokriva lokalne baze i prateće datoteke, sigurnosne kopije, privatne env datoteke, privitke, kalendare, ključeve, logove, lokalnu autentikaciju preglednika, privremene datoteke, buildove i binarne pakete izdanja. Iznimka za `.env.example` služi samo pregledanom predlošku.
@@ -45,6 +45,44 @@ Novi kandidat dokumentira Git pravila s LF završecima redaka i uklanjanje osam 
 
 Dva povijesna release manifesta imaju zasebnu Git iznimku za očuvanje njihovih izvornih CRLF bajtova. Njihovi SHA-256 sažeci ostaju isti. Novi manifest i novi izvorni kod koriste LF.
 
-Izolirane provjere nakon promjene završile su s 100/100 Python testova, 42/42 Playwright scenarija, bez Svelte/TypeScript pogrešaka ili upozorenja te s dva međusobno identična produkcijska builda od 20 datoteka. Produkcijska aktivacija nije provedena. Git commit još nije odobren za ovaj korak pa je `gitCommit` označen kao `UNKNOWN`. Stari zapis da je Git indeks bio prazan opisuje stanje prethodnog audita; u ovoj pripremi indeks sadrži datoteke za prvi commit.
+Izolirane provjere nakon promjene završile su s 100/100 Python testova, 42/42 Playwright scenarija, bez Svelte/TypeScript pogrešaka ili upozorenja te s dva međusobno identična produkcijska builda od 20 datoteka. Produkcijska aktivacija nije provedena. Manifest je nastao prije prvog Git commita i zato zadržava tada točan `gitCommit: UNKNOWN`; naknadni audit niže povezuje njegov neizmijenjeni sadržaj s commitom.
 
 [Novi manifest](releases/GPS-20261114-git-normalization-01/release-manifest.json) · [Novi frontend paket](releases/GPS-20261114-git-normalization-01/frontend.zip) · [Novi paket izvora](releases/GPS-20261114-git-normalization-01/source-inputs.zip)
+
+## Git baseline i provjera čistog checkouta — 15. 11. 2026.
+
+Prvi lokalni commit `7b95de340e2d503939099a5f245299ec7743a827` sadrži 73 provjerene datoteke. U trenutku provjere grana je `master`, izvorno radno stablo i izdvojeni checkout su čisti, a izvorni repozitorij nema konfiguriran remote. `.gitattributes` je dio commita. Povijesni release manifesti nisu mijenjani; zapis `UNKNOWN` u manifestu kandidata opisuje stanje pri njegovoj pripremi, a ovaj dodatni audit bilježi kasniju vezu s commitom.
+
+Izdvojeni checkout iz tog commita potvrđen je usporedbom SHA-256 svih 72 izvornih datoteka iz manifesta. Instalacija `pnpm install --frozen-lockfile` prošla je uz sigurnosnu provjeru 79 unosa. Prvi pokušaj bez mreže nije završio jer lokalnoj predmemoriji nedostaju metapodaci za istu provjeru; sigurnosna provjera nije preskočena. Python regresijski skup prošao je 100/100, Playwright Chromium na izdvojenoj bazi 42/42, `pnpm check` ima 0 pogrešaka i 0 upozorenja, a produkcijski build odgovara manifestu u svih 20 datoteka.
+
+Kontrolni sažeci: neizmijenjeni manifest kandidata `220d09f5e996686b0913902d9940b8884464a3b0bdf999a9c2dd212299f854bb`; paket izvora `f72cf162d54f179cb1e9c9cf1e5c1f474be952b1d7f1a00e26eccd6c8a49b3e0`; frontend paket `92781236df74a4a19e9779f427007ccde8b1139139ccda2000a91ec4703a5fb4`. Zasebni audit zapis ima SHA-256 `3946f5fd128c5031c7c5eb6389ce0c091e520be159fafee8f69bc53804c2654c` i nastao je jednokratnim upisom; prethodni manifesti nisu prepisani. SHA-256 i atribut samo za čitanje omogućuju otkrivanje i otežavaju slučajnu izmjenu, ali nisu kriptografski potpis. Uključivanje audita u novi Git commit zahtijeva zasebno odobrenje.
+
+Lokalna korisnička baza očitana je samo za čitanje i ostaje na SQLite v11. Na portu 8787 nije zatečen aktivan poslužitelj; ova provjera ne dokazuje aktualno produkcijsko posluživanje niti aktivira kandidata. Pythonove tranzitivne ovisnosti nisu potpuno zaključane.
+
+[Audit čistog checkouta](releases/GPS-20261114-git-normalization-01/audit-20261115-clean-checkout-7b95de3.json)
+
+## GPS-20261115-health-history-01
+
+Lokalno provjerena faza 1. Python 104 testova i ciljani Playwright 1 scenarija prolaze; tipovi i izdvojeni build prolaze. Kandidat v12 nije aktiviran na korisničkoj bazi v11. Neovisni review čeka. [Manifest](releases/GPS-20261115-health-history-01/release-manifest.json).
+
+## GPS-20261115-recovery-contributions-01
+
+Lokalno provjerena faza 2. Python 106 testova i ciljani Playwright 2 scenarija prolaze; tipovi i izdvojeni build prolaze. Kandidat v12 nije aktiviran na korisničkoj bazi v11. Neovisni review čeka. [Manifest](releases/GPS-20261115-recovery-contributions-01/release-manifest.json).
+
+## GPS-20261115-nutrition-training-01
+
+Lokalno provjerena faza 3. Python 109 testova i ciljani Playwright 3 scenarija prolaze; tipovi i izdvojeni build prolaze. Kandidat v12 nije aktiviran na korisničkoj bazi v11. Neovisni review čeka. [Manifest](releases/GPS-20261115-nutrition-training-01/release-manifest.json).
+
+## GPS-20261115-running-comparison-01
+
+Lokalno provjerena faza 4. Python 111 testova i ciljani Playwright 4 scenarija prolaze; tipovi i izdvojeni build prolaze. Kandidat v12 nije aktiviran na korisničkoj bazi v11. Neovisni review čeka. [Manifest](releases/GPS-20261115-running-comparison-01/release-manifest.json).
+
+## GPS-20261115-training-response-01
+
+Lokalno provjerena faza 5. Python 120 testova i puni Playwright 49 scenarija prolaze; tipovi i izdvojeni build prolaze. Kandidat v12 nije aktiviran na korisničkoj bazi v11. Neovisni review čeka. [Manifest](releases/GPS-20261115-training-response-01/release-manifest.json).
+
+Završni kandidat obuhvaća svih pet faza. [Developer Handoff](releases/GPS-20261115-training-response-01/developer-handoff.md). Puni rezultat: 120 Python testova i 49 E2E scenarija.
+
+## Produkcijska aktivacija — 15. 11. 2026.
+
+`GPS-20261115-training-response-01` je `PRODUCTION_ACTIVE`, PID 4308, port 8787, SQLite v12, nakon izričitog korisničkog odobrenja. Migracija je sačuvala svih 32 postojećih tablica; nakon pokretanja i stvarne Garmin sinkronizacije svih 30 zaštićenih tablica ostalo je neizmijenjeno. Posluženo je 20/20 provjerenih frontend datoteka, Garmin 20/20 izvora, Nutrition i analitički API rade. [Zapis aktivacije](releases/GPS-20261115-training-response-01/production-activation-20261115.json). Povijesni manifest kandidata sačuvan je bez izmjene.

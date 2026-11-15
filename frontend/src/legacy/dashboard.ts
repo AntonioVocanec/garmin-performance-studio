@@ -1,5 +1,6 @@
 // @ts-nocheck -- legacy DOM renderer; API access and validation live in typed api.ts.
 import { analyzeBloodLabPdfs, correctBloodLabResult, deleteBloodLabReport, deleteLifeEvent, getActivityDetails, getBloodLabReports, getDashboard, getEcgDetail, getGarminProfile, getJournal, getSkinTemperature, saveActivityRpe, saveBloodLabReport, saveJournal, saveLifeEvent } from "../lib/api";
+import {publishDashboard} from '../lib/analyticsApi';
 
 let chartModulePromise;
 const chartModule=()=>chartModulePromise??=(import("../lib/charts"));
@@ -60,6 +61,7 @@ const $=id=>document.getElementById(id), dateInput=$("date");
   };
   const applyHistoryWindow=(mode,range=null)=>{
     selectedHistoryWindow=mode;activeHistoryRange=range;
+    window.dispatchEvent(new CustomEvent('analytics:range',{detail:range}));
     historyWindowError.textContent="";
     void chartModule().then(module=>module.setChartDateRange(range?.start||null,range?.end||null));
     syncHistoryWindowControls();
@@ -1373,7 +1375,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
   const load=async(forceRefresh=false)=>{
     if(activeController)activeController.abort();activeController=new AbortController();void loadSkinTemperature(dateInput.value,forceRefresh);void loadGarminProfile(dateInput.value,forceRefresh);const button=$("refresh");button.disabled=true;button.textContent="Učitavam…";$("api-status").innerHTML='<i class="dot"></i>Učitavam Garmin';$("api-status").className="status";
     try{
-      const payload=await getDashboard(dateInput.value,forceRefresh,activeController.signal);render(payload);window.dispatchEvent(new Event("dashboard:content-updated"));await loadJournal(dateInput.value);
+      const target=dateInput.value;const payload=await getDashboard(target,forceRefresh,activeController.signal);if(payload.date!==dateInput.value)return;render(payload);publishDashboard(payload);window.dispatchEvent(new Event("dashboard:content-updated"));await loadJournal(target);
     }catch(error){if(error.name==="AbortError")return;$("source-warning")?.setAttribute("hidden","");const offline=!navigator.onLine,message=offline?"Poveži se s kućnim računalom putem Tailscalea pa osvježi.":error.message;$("api-status").textContent=offline?"Izvan mreže":"Pogreška pri učitavanju";$("api-status").className="status error";$("focus").textContent=offline?"Nema veze":"Nema podataka";$("focus-context").textContent=offline?"Garmin podaci i dnevnik nisu dostupni bez veze sa dashboardom.":error.message;$("today-interpretation").textContent="Pregled zdravlja nije dostupan";$("hero-executive-copy").textContent=message;$("health-overview-title").textContent="Pregled zdravlja nije dostupan";$("health-overview-summary").textContent=message;$("health-overview-coverage").textContent="—";$("health-pillars").innerHTML=`<div class="empty-chart">${escapeHtml(message)}</div>`;$("health-insight-title").textContent="Čekam novu vezu s Garmin podacima";$("health-insight-copy").textContent="Zdravstveni signali i tjedni trendovi prikazat će se nakon osvježavanja.";$("health-weekly-trends").innerHTML="";$("overview").innerHTML=`<article class="metric error">${escapeHtml(message)}</article>`;$("schedule").innerHTML=`<div class="error">${offline?"Dashboard je izvan mreže.":"Provjeri Garmin ključ i API pristup."}</div>`}
     finally{button.disabled=false;button.textContent="Osvježi podatke"}
   };
@@ -1636,6 +1638,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
   $("calendar-day-detail").addEventListener("click",event=>{const button=event.target.closest(".calendar-run-item");if(!button||button.disabled)return;const activity=calendarActivitiesById.get(button.dataset.calendarActivityId);if(activity)void selectActivity(activity.id,true,activity)});
   $("ecg-readings").addEventListener("click",event=>{const button=event.target.closest(".ecg-reading-row");if(button)void selectEcgReading(button.dataset.ecgReadingId)});
   $("activity-list").addEventListener("click",event=>{const button=event.target.closest(".activity-select");if(button&&!button.disabled)void selectActivity(button.dataset.activityId,true)});
+  document.addEventListener('analytics:activity-select',event=>{const run=event.detail;if(run?.id)void selectActivity(run.id,true,run)});
   document.addEventListener("dashboard-chart-date-select",event=>{
     const detail=event.detail||{},activityId=detail.activityId==null?null:String(detail.activityId);
     if(activityId){
