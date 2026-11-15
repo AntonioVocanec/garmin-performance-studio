@@ -19,6 +19,22 @@ export interface Profile {version:number;calories?:string|null;protein?:string|n
 export interface PlanEntry {id:string;entry_date:string;meal:string;name:string;recipe_version_id:string;portions:string;status:string;version:number;nutrients:Nutrients}
 export interface ShoppingItem {id:string;food_id:string;name:string;unit:string;quantity:string;required:string;packageSize:string|null;checked:boolean;received:boolean;version:number}
 export interface Shopping {id:string;name:string;items:ShoppingItem[]}
+export interface ShoppingPreviewItem {name:string;quantity:string|number;unit:string;cost:string|null;priceDate:string|null}
+export function validateShoppingPreview(value:unknown):ShoppingPreviewItem[]{
+  const invalid=()=>new Error('Podaci pregleda kupovine nisu valjani. Osvježi pregled ili pokušaj ponovno.');
+  if(!Array.isArray(value))throw invalid();
+  for(const item of value){
+    if(!item||typeof item!=='object'||typeof item.name!=='string'||!item.name.trim()
+      ||typeof item.unit!=='string'||!item.unit.trim())throw invalid();
+    const quantity=item.quantity;
+    if((typeof quantity!=='string'&&typeof quantity!=='number')
+      ||(typeof quantity==='string'&&!/^\d+(?:\.\d+)?$/.test(quantity.trim()))
+      ||!Number.isFinite(Number(quantity))||Number(quantity)<0)throw invalid();
+    if(item.cost!==null&&(typeof item.cost!=='string'||!/^\d+(?:\.\d+)?$/.test(item.cost)||!Number.isFinite(Number(item.cost))))throw invalid();
+    if(item.priceDate!==null&&(typeof item.priceDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(item.priceDate)))throw invalid();
+  }
+  return value.filter(item=>Number(item.quantity)>0);
+}
 export interface Energy {status:string;date:string;source:string;fetchedAt:string|null;activeCalories:number|null;restingCalories:number|null;totalCalories:number|null;localEstimate:number|null;provisional:boolean;history?:{date:string;totalCalories:number|null}[];nextRun?:{title?:string;date?:string;distanceKm?:number;durationMinSeconds?:number}|null}
 export interface Overview {diary:Diary;profile:Profile;meals:PlanEntry[];portions:Lot[];alerts:Lot[];lowStock:Food[]}
 const pending = new Map<string,string>();

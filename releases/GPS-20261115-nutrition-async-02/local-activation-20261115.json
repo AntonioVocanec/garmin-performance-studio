@@ -1,0 +1,31 @@
+{
+  "releaseId": "GPS-20261115-nutrition-async-02",
+  "status": "LOCAL_ACTIVE",
+  "approvedByUser": true,
+  "verifiedAtUTC": "2026-11-15T14:39:41.058746+00:00",
+  "baselineCommitSha": "aad428f2a7634f01df67d65e826da2d6c05841af",
+  "previousPID": 8816,
+  "activePID": 20888,
+  "host": "127.0.0.1",
+  "port": 8787,
+  "manifestSHA256": "7a74edd426544c8b217518dab4d5d8d4a6c155f7d329c7bb385b95ce0b539efb",
+  "backupDirectory": "C:\\Users\\carti\\Documents\\ChatGPT\\GarminActivationBackups\\GPS-nutrition-async-20261115-153844",
+  "sqliteSchema": 12,
+  "migrationRequired": false,
+  "checks": {
+    "healthHTTP": 200,
+    "nutritionProfileHTTP": 200,
+    "nutritionDashboardHTTP": 200,
+    "archivedHealthHTTP": 200,
+    "openapiHTTP": 200,
+    "frontendHashesMatched": 20,
+    "integrity": "ok",
+    "foreignKeyErrors": 0,
+    "tablesPreserved": 36
+  },
+  "smokeNote": "Initial OpenAPI request used /openapi.json and returned 404. Verified documented /api/openapi.json with HTTP 200.",
+  "remainingLimitations": [
+    "Manual screen-reader verification not performed"
+  ],
+  "gitStateAtActivation": "Verified working tree; commit and push follow activation record"
+}

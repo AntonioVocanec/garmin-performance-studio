@@ -94,3 +94,11 @@ Kandidat zadatka `NUTRITION-UX-AUDIT-01` pripremljen je u izdvojenom okruženju.
 ### Aktivacija Nutrition UX — 15. 11. 2026.
 
 `GPS-20261115-nutrition-ux-01` aktiviran je uz izričito odobrenje korisnika. Prethodni server PID 37860 zaustavljen je prije isporuke. Novi PID 8816 sluša na 127.0.0.1:8787. Provjereno je svih 20 posluženih frontend hashova, SQLite v12, integritet, strane veze i očuvanje sadržaja svih 36 tablica. Nutrition profil, dashboard i arhivirana zdravstvena povijest vraćaju HTTP 200. Sačuvani su prethodni frontend i konzistentna kopija baze izvan rotacije. Kandidatov manifest i raniji izvještaj opisuju stanje prije aktivacije; novi zapis je `releases/GPS-20261115-nutrition-ux-01/local-activation-20261115.json`.
+
+## GPS-20261115-nutrition-async-02
+
+Kandidat nad commitom `aad428f2a7634f01df67d65e826da2d6c05841af` rješava UX-R01/R02/R03. Tri pada reproducirana su prije popravka. Završna provjera daje Chromium 82/82, Nutrition Firefox 41/41 i WebKit 41/41; tipovi i izdvojeni build prolaze. Manifest, paketi, rezultati i izvještaj nalaze se u istoimenoj release mapi. Ručna provjera čitačem zaslona ostaje otvorena. Kandidat čeka review i zasebno odobrenje za commit, push i aktivaciju. Postojeća aktivna verzija na portu 8787 ostaje GPS-20261115-nutrition-ux-01.
+
+### Aktivacija Nutrition Async — 15. 11. 2026.
+
+`GPS-20261115-nutrition-async-02` aktiviran je uz korisničko odobrenje. Prethodni PID 8816 zaustavljen je prije isporuke, novi PID 20888 sluša na 127.0.0.1:8787. Posluženi hashovi odgovaraju paketu 20/20. SQLite v12 prolazi integritet i strane veze, a sadržaj svih 36 tablica očuvan je. Nutrition profil/dashboard, arhivirana zdravstvena povijest i /api/openapi.json vraćaju HTTP 200. Sačuvani su prethodni frontend, izvorni kod prethodnog commita i konzistentna kopija baze izvan rotacije. Ručna provjera čitačem zaslona ostaje otvorena. Zapis je `releases/GPS-20261115-nutrition-async-02/local-activation-20261115.json`. Raniji statusi čekanja u manifestu i izvještaju opisuju stanje kandidata prije aktivacije.

@@ -1,0 +1,67 @@
+{
+  "baselineCommit": "aad428f2a7634f01df67d65e826da2d6c05841af",
+  "beforePatch": {
+    "failed": 3,
+    "tests": [
+      "meal prep delayed result respects portions",
+      "scaling delayed result respects date",
+      "shopping rejects malformed response invalid"
+    ]
+  },
+  "finalRuns": {
+    "full-final": {
+      "stats": {
+        "startTime": "2026-11-15T14:05:45.035Z",
+        "duration": 133337.962,
+        "expected": 82,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "logSHA256": "2dac1c8df4bdb578830e1238af4532a248ac96a31be80a5f46ea686679c7e57f"
+    },
+    "firefox-final": {
+      "stats": {
+        "startTime": "2026-11-15T14:06:31.204Z",
+        "duration": 98506.869,
+        "expected": 41,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "logSHA256": "8f70a51d0c71b319ff0c5955bec34c88a59de21dd3547cb7cbed4e90e393c573"
+    },
+    "webkit-final": {
+      "stats": {
+        "startTime": "2026-11-15T14:03:22.210Z",
+        "duration": 115647.59300000001,
+        "expected": 41,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "logSHA256": "16d431521a961ccda66c3cb0dad5c09bb1c586845278f3ed5e1d419fc03e91cb"
+    }
+  },
+  "pnpmCheck": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "build": "PASS",
+  "isolation": {
+    "privateEnvFilesPresent": false,
+    "databases": [
+      "tmp\\analytics-verification-20261115\\tmp\\nutrition-async-verified-150402\\test.sqlite3",
+      "tmp\\analytics-verification-20261115\\tmp\\nutrition-async-cross-final-firefox\\test.sqlite3",
+      "tmp\\analytics-verification-20261115\\tmp\\nutrition-async-cross-final-webkit\\test.sqlite3"
+    ],
+    "databaseIntegrity": "ok",
+    "foreignKeyErrors": 0,
+    "chromiumPort": 8879,
+    "focusedBrowserPort": 8878
+  },
+  "limitations": [
+    "Manual screen-reader verification not performed; no active NVDA session or executable at common installation paths"
+  ],
+  "crossBrowserHarness": "Native date selection committed with Tab; service workers blocked for mocked Nutrition scenarios; full Chromium suite includes PWA test"
+}

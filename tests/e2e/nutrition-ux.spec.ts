@@ -43,6 +43,7 @@ test('nutrition notices stay in their action context including late success and 
   await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();
   await expect(page.getByRole('status')).toBeVisible();
   await page.locator('#date').fill('2018-03-12');
+  await page.locator('#date').press('Tab');
   await expect(page.locator('.nutrition [role="status"]')).toHaveCount(0);
 });
 
@@ -89,6 +90,7 @@ test('nutrition empty shopping explains manual lists and clears stale dated prev
   const food = (await response.json()).data;
   await setup(page, 'shopping');
   await page.locator('#date').fill('2018-04-02');
+  await page.locator('#date').press('Tab');
   await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy', 'false');
   await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();
   await expect(page.locator('.nutrition')).toContainText('Tjedni plan je prazan. Nema izračunatih stavki');
@@ -106,6 +108,7 @@ test('nutrition empty shopping explains manual lists and clears stale dated prev
   await page.keyboard.press('Enter');
   await expect(page.locator('.nutrition')).toContainText(food.name + ' · 50 g');
   await page.locator('#date').fill('2018-04-03');
+  await page.locator('#date').press('Tab');
   await expect(page.getByRole('button', { name: 'Izradi praznu listu' })).toHaveCount(0);
 });
 
@@ -113,6 +116,7 @@ test('nutrition complete user flow creates food receipt recipe plan batch diary 
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page, 'inventory');
   await page.locator('#date').fill('2018-05-07');
+  await page.locator('#date').press('Tab');
   const name = 'UX namirnica ' + crypto.randomUUID();
   const editor = page.locator('.nutrition details').filter({ has: page.locator('summary').filter({ hasText: /^Nova namirnica$/ }) });
   await editor.locator(':scope > summary').click();

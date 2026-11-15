@@ -6,7 +6,10 @@ const card = (page: Page) => page.locator('.nutrition article').filter({
   has: page.getByRole('heading', { name: 'Garmin energetski kontekst' }),
 });
 const balance = (page: Page) => card(page).locator('p').filter({ hasText: 'Bilanca do sinkronizacije' });
-const choose = (page: Page, date: string) => page.locator('#date').fill(date);
+const choose = async (page: Page, date: string) => {
+  await page.locator('#date').fill(date);
+  await page.locator('#date').press('Tab');
+};
 
 function gate() {
   let open!: () => void;
