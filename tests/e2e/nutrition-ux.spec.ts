@@ -230,14 +230,14 @@ test('nutrition complete user flow creates food receipt recipe plan batch diary 
   const receipt = page.locator('.nutrition article').filter({ has: page.getByRole('heading', { name: 'Prijem namirnica' }) });
   await expect(receipt.getByRole('combobox', { name: 'Namirnica', exact: true })).toContainText(name);
   await receipt.getByRole('combobox', { name: 'Namirnica', exact: true }).selectOption({ label: name + ' · g' });
-  await receipt.getByLabel('Količina', { exact: true }).fill('200');
+  await receipt.getByLabel('Količina za prijem · g', { exact: true }).fill('200');
   await receipt.getByLabel('Datum stvarnog primitka').fill('2018-05-06');
   await receipt.getByLabel('Rok', { exact: true }).fill('2099-12-01');
   await receipt.getByLabel('Nabavna cijena ukupno · EUR').fill('4');
-  await receipt.getByLabel('Količina', { exact: true }).fill('-1');
+  await receipt.getByLabel('Količina za prijem · g', { exact: true }).fill('-1');
   await receipt.getByRole('button', { name: 'Potvrdi prijem' }).click();
   await expect(page.locator('.nutrition [role="alert"]')).toBeVisible();
-  await receipt.getByLabel('Količina', { exact: true }).fill('200');
+  await receipt.getByLabel('Količina za prijem · g', { exact: true }).fill('200');
   await receipt.getByRole('button', { name: 'Potvrdi prijem' }).click();
   await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy', 'false');
   const inventory = async () => (await (await request.get('/api/nutrition/inventory')).json()).data;

@@ -51,7 +51,7 @@ for (const width of [1280,390]) {
     await expect(editor.getByLabel('Sastav i alergeni provjereni na izvoru')).not.toBeChecked();
     expect(await foods()).toHaveLength(0);
     await kcal.fill('333');
-    await editor.getByRole('combobox',{name:'Stanje',exact:true}).selectOption('dry');
+    await editor.getByRole('combobox',{name:'Stanje namirnice za deklaraciju',exact:true}).selectOption('dry');
     await editor.getByRole('button',{name:'Spremi',exact:true}).click();
     await expect.poll(async()=>(await foods()).length).toBe(1);
     const [saved]=await foods();

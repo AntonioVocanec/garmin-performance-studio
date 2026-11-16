@@ -1,0 +1,26 @@
+{
+  "releaseId": "GPS-20261116-nutrition-ai-recovery-01",
+  "pid": 7088,
+  "previousPid": 16568,
+  "schema": 12,
+  "tablesPreserved": 36,
+  "frontendHashesVerified": 20,
+  "smokeHTTP200": [
+    "/",
+    "/api/health",
+    "/api/nutrition/profile",
+    "/api/nutrition/foods",
+    "/api/nutrition/dashboard?date=2026-11-16",
+    "/api/nutrition/ai/status",
+    "/api/analytics/health?start=2026-11-09&end=2026-11-15"
+  ],
+  "backupDirectory": "C:\\Users\\carti\\Documents\\ChatGPT\\GarminActivationBackups\\GPS-ai-recovery-20261116-031712",
+  "tests": {
+    "python": 124,
+    "playwrightChromium": 6,
+    "check": "0 errors, 0 warnings",
+    "build": "PASS",
+    "initialPlaywrightFailure": "Reused test database caused shopping empty-state assertion failure. All six passed on fresh isolated database."
+  },
+  "paidCalls": 0
+}

@@ -210,3 +210,33 @@ test('an already received AI recipe stays available when navigating away and bac
   await navigateAwayAndBack(page, 'inventory');
   await expect(assistant).toContainText('Primljeni recept');
 });
+
+test('AI failure requires a refreshed preview and fresh confirmation', async ({ page }) => {
+  await setup(page, 'inventory');
+  const panel = page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'AI Recipe Assistant'})});
+  let previews=0, generations=0;
+  await page.route('**/api/nutrition/ai/preview', route=>route.fulfill({json:{ok:true,data:{
+    previewId:'preview-'+(++previews),items:[{name:'Test',quantity:String(12000/previews),unit:'g'}],staticInstructions:'Provjeri količine.'
+  }}}));
+  await page.route('**/api/nutrition/ai/generate', route=>{
+    generations++;
+    expect(route.request().postDataJSON().previewId).toBe('preview-'+generations);
+    return generations===1 ? route.fulfill({status:422,json:{ok:false,error:'Prijedlog 2: nedostaje sastojak.'}})
+      : route.fulfill({json:{ok:true,data:{drafts:[{id:'draft',recipe:{name:'Potvrđen nacrt',ingredients:[],steps:[]}}]}}});
+  });
+  await panel.getByLabel(/Testni lot a/).check();
+  await panel.getByRole('button',{name:'Prikaži sadržaj za slanje'}).click();
+  await panel.getByLabel(/Potvrđujem slanje/).check();
+  const generate=panel.getByRole('button',{name:'Generiraj recepte'});
+  await generate.click();
+  await expect(page.locator('.nutrition [role=alert]')).toContainText('Prijedlog 2');
+  await panel.getByRole('button',{name:'Novi pregled za slanje'}).click();
+  await expect(panel).toContainText('6000 g');
+  await expect(panel.getByLabel(/Testni lot a/)).toBeChecked();
+  await expect(generate).toBeDisabled();
+  expect(generations).toBe(1);
+  await panel.getByLabel(/Potvrđujem slanje/).check();
+  await generate.click();
+  await expect(panel).toContainText('Potvrđen nacrt');
+  expect(generations).toBe(2);
+});

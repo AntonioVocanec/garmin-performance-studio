@@ -104,3 +104,15 @@ U obrascu **Zalihe → Nova namirnica** moguće je pretražiti USDA, pregledati 
 ### Aktivacija USDA unosa · 15. 11. 2026.
 
 GPS-20261115-nutrition-usda-entry-01 aktiviran je uz korisničko odobrenje. PID 8520, port 8787. Provjereno 20/20 frontend hashova, SQLite v12 i očuvanje 36 tablica. Python 122/122, ciljani Chromium 8/8, pnpm check i izdvojeni build prolaze. USDA provjere koriste simulirane odgovore. Evidencija je u releases/GPS-20261115-nutrition-usda-entry-01/local-activation.json.
+
+### Jasnoća deklaracije i prijema namirnica · 16. 11. 2026.
+
+Prag niske zalihe premješten je u opcionalne postavke s objašnjenjem i jedinicom. Obrazac razlikuje stanje deklaracije na 100 g od stvarne količine pri prijemu. Prijem prikazuje inventarnu jedinicu odabrane namirnice (g, ml ili kom). Implementirano u razvojnom kodu.
+
+### AI Recipe Assistant · provjera prijedloga i novi pregled
+
+Razvojna verzija prikazuje razlog odbijanja, provjerava količine odabranih lotova i nakon greške traži novi pregled i potvrdu. Commit i aktivacija su na čekanju.
+
+### Aktivacija prehrane i AI recepata · 16. 11. 2026.
+
+GPS-20261116-nutrition-ai-recovery-01 aktiviran je uz korisničko odobrenje. Uključuje jasnije jedinice prijema, opcionalni prag zaliha i AI dijagnostiku s novom potvrdom nakon greške. PID 7088, port 8787. Hashovi 20/20 frontend datoteka i sadržaj svih 36 tablica provjereni. SQLite v12, integritet i strane veze prolaze. Python 124/124, Chromium 6/6 na svježoj izoliranoj bazi, pnpm check i build prolaze. Prvi E2E pokušaj koristio je staru testnu bazu i pao na praznom stanju kupovine. Generiranje recepata provjereno je simuliranim odgovorima. Evidencija je u releases/GPS-20261116-nutrition-ai-recovery-01/local-activation.json.

@@ -21,12 +21,15 @@
  let schedule=$state<{id:string;planned_date:string;name:string;recipe_version_id:string;portions:number}[]>([]),planSummary=$state<{nutrients:Record<string,string|null>;estimatedCost:string|null;days:{date:string;nutrients:Record<string,string|null>}[]}|null>(null);
  let scheduleId=$state<string|null>(null),plannedPrepDate=$state(''),planEdit=$state<{id:string;version:number}|null>(null);
  let shoppingPreview=$state<ShoppingPreviewItem[]|null>(null);
+ let aiRetry=$state(false);
  let aiLots=$state<string[]>([]),aiPreview=$state<{previewId:string;items:{name:string;quantity:string;unit:string}[];staticInstructions:string}|null>(null),aiConfirmed=$state(false),aiDrafts=$state<{id:string;recipe:{name:string;steps:string[];ingredients:{foodId:string;quantity:string}[]}}[]>([]);
  let trainingMinutes=$state(''),extraCalories=$state(''),extraCarbs=$state('');
  let controller:AbortController|undefined,energyController:AbortController|undefined;
  const titles:Record<string,string>={overview:'Dnevni pregled prehrane',diary:'Dnevnik prehrane',planner:'Tjedni planer',recipes:'Recepti',prep:'Meal Prep',inventory:'Zalihe',shopping:'Kupovina'};
  function shift(day:string,n:number){const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
  function weekStart(day:string){return shift(day,-((new Date(day+'T12:00:00Z').getUTCDay()+6)%7))}
+ const receiptItem=$derived(foods.find(f=>f.id===receiptFood));
+ const receiptUnit=$derived(receiptItem?.unit==='piece'?'kom':receiptItem?.unit??'');
  const options=$derived(logKind==='food'?foods.map(f=>({id:f.id,name:f.name,unit:f.unit})):logKind==='recipe'?recipes.map(r=>({id:r.versionId,name:r.name,unit:'porcija'})):lots.filter(l=>l.batch_id).map(l=>({id:l.id,name:`${l.name} · ${l.quantity} porcija`,unit:'porcija'})));
  const prepBody=$derived({recipeVersionId:prepRecipe,portions:prepQuantity,location:prepLocation,expiresOn:prepExpiry,asOf:date,cookedMass:prepMass||null,scheduleId,optionalIngredientPositions:[...prepOptionalPositions].sort((a,b)=>a-b)});
  const shownRecipes=$derived(recipes.filter(r=>r.name.toLocaleLowerCase('hr').includes(search.toLocaleLowerCase('hr'))&&(!recipeFilter||r.tags.includes(recipeFilter))));
@@ -66,7 +69,7 @@
  function clearNotices(){
   contextRevision++;error='';message='';
   prepPreview=null;shoppingPreview=null;scale={};
-  aiPreview=null;aiConfirmed=false;
+  aiPreview=null;aiConfirmed=false;aiRetry=false;
  }
  async function action<T>(
   work:()=>Promise<T>,
@@ -144,7 +147,7 @@
   await tick();
   document.querySelector<HTMLInputElement>('.usda-picker input')?.focus();
  }
- function resetAi(){aiPreview=null;aiConfirmed=false;aiDrafts=[]}
+ function resetAi(){aiPreview=null;aiConfirmed=false;aiRetry=false;aiDrafts=[]}
  function selectedLots(){return JSON.stringify([...aiLots].sort())}
  async function previewAi(){
   const lotIds=[...aiLots],selection=selectedLots();
@@ -162,7 +165,8 @@
   await action(()=>api<{drafts:typeof aiDrafts}>('/ai/generate','POST',{previewId,confirmation:true}),
    'Prijedlozi su spremni za pregled.',{
     isCurrent:()=>aiConfirmed&&aiPreview?.previewId===previewId&&selectedLots()===selection,
-    apply:result=>{aiDrafts=result.drafts},
+    onError:()=>{resetAi();aiRetry=true},
+    apply:result=>{aiDrafts=result.drafts;aiPreview=null;aiConfirmed=false},
    });
  }
  async function savePlan(e:SubmitEvent){e.preventDefault();await action(()=>api(planEdit?`/plan/entries/${planEdit.id}`:'/plan/entries',planEdit?'PATCH':'POST',{date:planDate,meal:planMeal,recipeVersionId:planRecipe,portions:planPortions,expectedVersion:planEdit?.version??1,status:plans.find(p=>p.id===planEdit?.id)?.status??'planned'}))}
@@ -200,11 +204,11 @@
  <details class="panel nutrition-details"><summary>Provjereni nutritivni izvori · USDA</summary>
  <p>Pronađi izvor i pregledaj vrijednosti u obrascu prije spremanja.</p>
  <button class="btn" onclick={openUsdaEditor}>Otvori USDA pretragu u obrascu</button></details>
- <article class="panel"><h3>Prijem namirnica</h3><form class="nutrition-form" onsubmit={saveReceipt}><div class="nutrition-fields"><label>Namirnica<select required bind:value={receiptFood}><option value="">Odaberi</option>{#each foods as f}<option value={f.id}>{f.name} · {f.unit}</option>{/each}</select></label><label>Količina<input required inputmode="decimal" bind:value={receiptQuantity}/></label><label>Lokacija<select bind:value={receiptLocation}>{#each Object.entries(locationLabels) as [k,l]}<option value={k}>{l}</option>{/each}</select></label><label>Datum stvarnog primitka<input type="date" bind:value={receiptDate}/></label><label>Rok<input type="date" bind:value={receiptExpiry}/></label><label>Nabavna cijena ukupno · EUR<input inputmode="decimal" bind:value={receiptCost} placeholder="Nepoznato"/></label></div><button class="btn" disabled={busy}>Potvrdi prijem</button></form></article>
+ <article class="panel"><h3>Prijem namirnica</h3><p class="quiet">Odaberi namirnicu i unesi stvarnu količinu koju dodaješ. Za pakiranje od 500 g upiši 500 u polje označeno gramima. Nutritivna deklaracija ostaje na 100 g.</p><form class="nutrition-form" onsubmit={saveReceipt}><div class="nutrition-fields"><label>Namirnica<select required bind:value={receiptFood}><option value="">Odaberi</option>{#each foods as f}<option value={f.id}>{f.name} · {f.unit==='piece'?'kom':f.unit}</option>{/each}</select></label><label>Količina za prijem{receiptUnit?' · '+receiptUnit:' · prvo odaberi namirnicu'}<input required disabled={!receiptItem} inputmode="decimal" bind:value={receiptQuantity}/></label><label>Lokacija<select bind:value={receiptLocation}>{#each Object.entries(locationLabels) as [k,l]}<option value={k}>{l}</option>{/each}</select></label><label>Datum stvarnog primitka<input type="date" bind:value={receiptDate}/></label><label>Rok<input type="date" bind:value={receiptExpiry}/></label><label>Nabavna cijena ukupno · EUR<input inputmode="decimal" bind:value={receiptCost} placeholder="Nepoznato"/></label></div><button class="btn" disabled={busy}>Potvrdi prijem</button></form></article>
  <div class="nutrition-grid">{#each lots as lot}<article class="panel"><h3>{lot.name}</h3><strong class="nutrition-value">{lot.quantity} <small>{lot.unit}</small></strong><p>{locationLabels[lot.location]} · rok {lot.expires_on??'nije zadan'}</p><p>Raspoloživo {lot.availableQuantity??'—'} {lot.unit} · isteklo {lot.expiredQuantity??'—'} {lot.unit}</p><p class="quiet">Primitak ili priprema {lot.receivedOn??'datum nije poznat; zaliha je isključena iz raspoloživosti'}</p><details><summary>Otpad, premještanje ili korekcija</summary><form class="nutrition-form" onsubmit={(e)=>lotAction(e,lot)}><label>Operacija<select name="kind"><option value="waste">Otpad</option><option value="transfers">Premjesti količinu</option><option value="adjustments">Postavi ispravno stanje</option></select></label><label>Količina<input name="quantity" required inputmode="decimal"/></label><label>Lokacija<select name="location">{#each Object.entries(locationLabels) as [k,l]}<option value={k}>{l}</option>{/each}</select></label><label>Razlog<input name="reason" required maxlength="300"/></label><button class="btn" disabled={busy}>Potvrdi promjenu</button></form></details></article>{:else}<article class="panel"><p class="quiet">Nema zaliha. Dodaj namirnicu i evidentiraj prijem.</p></article>{/each}</div>
  <details class="panel nutrition-details"><summary>Katalog namirnica · {foods.length}</summary>{#each foods as f}<div class="nutrition-row"><span>{f.name} · {f.state} · {f.source} · {f.retrievedAt??"datum izvora nije dostupan"}</span><button class="btn" onclick={()=>{foodEdit=f;editorOpen=true}}>Uredi</button></div>{/each}</details>
  <details class="panel nutrition-details"><summary>Povijest inventara</summary>{#each history as h}<div class="nutrition-row"><span>{h.created_at} · {h.reason} · {fmt(h.delta/1000)}</span><button class="btn" disabled={busy||Boolean(h.reversed_by)} onclick={()=>action(()=>api(`/operations/${h.operation_id}/reverse`,'POST'))}>Poništi operaciju</button></div>{/each}</details>
- <article class="panel"><h3>AI Recipe Assistant</h3><p class="quiet">Odaberi namirnice. Prije slanja prikazat će se točan sadržaj zahtjeva. AI budžet postavljaš u profilu.</p>{#each lots.filter(l=>l.food_id) as l}<label class="nutrition-check"><input type="checkbox" value={l.id} bind:group={aiLots} onchange={resetAi}/>{l.name} · {l.quantity} {l.unit} · {l.expires_on??'bez roka'}</label>{/each}<button class="btn" disabled={busy||!aiLots.length} onclick={previewAi}>Prikaži sadržaj za slanje</button>
+ <article class="panel"><h3>AI Recipe Assistant</h3><p class="quiet">Odaberi namirnice. Prije slanja prikazat će se točan sadržaj zahtjeva. AI budžet postavljaš u profilu.</p>{#each lots.filter(l=>l.food_id) as l}<label class="nutrition-check"><input type="checkbox" value={l.id} bind:group={aiLots} onchange={resetAi}/>{l.name} · {l.quantity} {l.unit} · {l.expires_on??'bez roka'}</label>{/each}<button class="btn" disabled={busy||!aiLots.length} onclick={previewAi}>{aiRetry?'Novi pregled za slanje':'Prikaži sadržaj za slanje'}</button>
  {#if aiPreview}<div class="nutrition-notice"><h4>OpenAI-ju se šalje</h4>{#each aiPreview.items as i}<p>{i.name} · {i.quantity} {i.unit}</p>{/each}<details><summary>Statičke upute</summary><p>{aiPreview.staticInstructions}</p></details><label class="nutrition-check"><input type="checkbox" bind:checked={aiConfirmed}/>Potvrđujem slanje prikazanih naziva i količina OpenAI-ju</label><button class="btn" disabled={busy||!aiConfirmed} onclick={generateAi}>Generiraj recepte</button></div>{/if}
  {#each aiDrafts as draft}<details class="nutrition-notice"><summary>{draft.recipe.name}</summary>{#each draft.recipe.ingredients as i}<p>{sourceName(i.foodId)} · {i.quantity}</p>{/each}<ol>{#each draft.recipe.steps as s}<li>{s}</li>{/each}</ol><button class="btn" disabled={busy} onclick={()=>action(()=>api(`/ai/drafts/${draft.id}/save`,'POST'))}>Spremi recept lokalno</button></details>{/each}</article>
  {:else if view==='recipes'}

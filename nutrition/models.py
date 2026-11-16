@@ -1,3 +1,4 @@
+from pydantic_core import PydanticCustomError
 from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal
@@ -245,8 +246,10 @@ class AIProposal(Input):
     def check_step_references(self):
         declared = set(range(1, len(self.ingredients) + 1))
         referenced = {ref for step in self.steps for ref in step.ingredientRefs}
-        if referenced != declared:
-            raise ValueError('Koraci moraju upućivati na sve i samo navedene sastojke.')
+        if referenced - declared:
+            raise PydanticCustomError('unknown_ref', 'Nepostojeći sastojak {ref}.', {'ref':min(referenced-declared)})
+        if declared - referenced:
+            raise PydanticCustomError('unused_ref', 'Neiskorišten sastojak {ref}.', {'ref':min(declared-referenced)})
         return self
 
 

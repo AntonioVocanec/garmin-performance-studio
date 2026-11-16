@@ -777,6 +777,57 @@ class NutritionTests(unittest.TestCase):
             endpoints['/ai/generate'](AIGenerate(previewId=preview['previewId'], confirmation=True), 'try')
         provider.assert_not_called()
 
+    def test_ai_large_selected_lots_and_fresh_availability(self):
+        from nutrition.models import AIPreview
+        endpoints,_=self.ai_preview_for_oats()
+        lot_ids=[]
+        ingredients=[]
+        for name,stock,serving in [('Milk',12000,200),('Rolled oats',1500,50),('Strawberry',2500,80)]:
+            food=self.service.save_food(Food(name=name,source='Test',allergensKnown=True).model_dump())
+            receipt={'foodId':food['id'],'quantity':stock,'location':'pantry','expiresOn':None,
+                     'cost':None,'receivedOn':self.service.today()}
+            lot=self.service.repo.operation('receipt',name,receipt,lambda db,op:self.service.receive(db,op,receipt))
+            lot_ids.append(lot['lotId'])
+            ingredients.append({'name':name,'quantity':serving})
+        def preview():
+            return endpoints['/ai/preview'](AIPreview(lotIds=lot_ids))['data']
+        recipe={**self.ai_proposal(),'ingredients':ingredients,'steps':[{'action':'mix','ingredientRefs':[1,2,3]}]}
+        result=self.generate_mock_recipes(endpoints,preview(),[recipe,recipe])
+        self.assertEqual(len(result['drafts']),2)
+        pending=preview()
+        with self.connection() as db:
+            db.execute('UPDATE nutrition_inventory_lots SET quantity=0 WHERE id=?',(lot_ids[1],))
+        with self.assertRaises(HTTPException) as error:
+            self.generate_mock_recipes(endpoints,pending,[recipe,recipe],'changed')
+        self.assertIn('više nije dovoljna',error.exception.detail)
+        with self.connection() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM nutrition_ai_drafts').fetchone()[0],2)
+
+    def test_ai_response_diagnostics_and_preview_quantity(self):
+        from nutrition.ai import parse_response
+        base=self.ai_proposal()
+        ingredients=[{'name':name,'quantity':q} for name,q in [('Milk',200),('Oats',50),('Berries',80)]]
+        recipe={**base,'ingredients':ingredients,'steps':[{'action':'mix','ingredientRefs':[1,2,3]}]}
+        def response(second):
+            return {'output_text':json.dumps({'recipes':[recipe,second]})}
+        self.assertEqual(len(parse_response(response(recipe)).recipes),2)
+        for refs,reason in [([1,2],'sastojak broj 3'),([1,4],'nepostojeći sastojak broj 4')]:
+            with self.assertRaisesRegex(DomainError,reason):
+                parse_response(response({**recipe,'steps':[{'action':'mix','ingredientRefs':refs}]}))
+        with self.assertRaisesRegex(DomainError,'količina'):
+            parse_response(response({**recipe,'ingredients':[{'name':'Milk','quantity':-1}]}))
+        with self.assertRaisesRegex(DomainError,'ne sadrži tekst'):
+            parse_response({})
+        endpoints,preview=self.ai_preview_for_oats()
+        self.receipt('extra','200','2026-12-01')
+        oversize={**base,'ingredients':[{'name':self.food['name'],'quantity':110}]}
+        with self.assertRaises(HTTPException) as error:
+            self.generate_mock_recipes(endpoints,preview,[base,oversize])
+        with self.connection() as db:
+            self.assertEqual(db.execute("SELECT error FROM nutrition_ai_requests WHERE state='failed'").fetchone()[0],error.exception.detail)
+            self.assertIn('premašuje potvrđenu količinu',error.exception.detail)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM nutrition_ai_drafts').fetchone()[0],0)
+
     def test_ai_payload_contains_only_names_amounts_and_static_instructions(self):
         from nutrition.ai import request_recipes
         from io import BytesIO
@@ -832,7 +883,7 @@ class NutritionTests(unittest.TestCase):
         response=BytesIO(json.dumps({'output_text':'{}'}).encode())
         rejected=HTTPError('https://example.invalid',429,'Rate limited',{},BytesIO(b'{"error":{"code":"rate_limit_exceeded"}}'))
         with patch('nutrition.ai.urlopen',side_effect=[rejected,response]) as network,patch('nutrition.ai.time.sleep'):
-            with self.assertRaises(ValidationError):request_recipes('synthetic','synthetic',[])
+            with self.assertRaises(DomainError):request_recipes('synthetic','synthetic',[])
         self.assertEqual(network.call_count,2)
 
 
