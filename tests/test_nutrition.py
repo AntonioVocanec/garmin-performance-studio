@@ -828,6 +828,29 @@ class NutritionTests(unittest.TestCase):
             self.assertIn('premašuje potvrđenu količinu',error.exception.detail)
             self.assertEqual(db.execute('SELECT COUNT(*) FROM nutrition_ai_drafts').fetchone()[0],0)
 
+    def test_ai_wire_quantity_has_same_limits_as_local_decimal(self):
+        from nutrition.ai import request_recipes, parse_response
+        proposal=self.ai_proposal()
+        with patch('nutrition.ai.urlopen',return_value=BytesIO(json.dumps(
+                {'output_text':json.dumps({'recipes':[proposal,proposal]})}).encode())) as network:
+            request_recipes('synthetic','synthetic',[])
+        schema=json.loads(network.call_args.args[0].data)['text']['format']['schema']
+        for definition,field in [('AIIngredient','quantity'),('AIProposal','portions')]:
+            shape=schema['$defs'][definition]['properties'][field]
+            self.assertEqual(shape['type'],'number')
+            self.assertEqual(shape['multipleOf'],0.001)
+            self.assertEqual(shape['minimum'],0.001)
+            self.assertEqual(shape['maximum'],999999999.999)
+        for value,reason in [('200 g','decimalni broj'),(0,'veća od nule'),
+                             ('0.0001','tri decimale'),('1000000000','prevelika')]:
+            with self.subTest(value=value):
+                bad={**proposal,'ingredients':[{'name':'Test oats','quantity':value}]}
+                with self.assertRaisesRegex(DomainError,reason):
+                    parse_response({'output_text':json.dumps({'recipes':[bad,proposal]})})
+        valid={**proposal,'portions':'1.5','ingredients':[{'name':'Test oats','quantity':'0.001'}]}
+        result=parse_response({'output_text':json.dumps({'recipes':[valid,valid]})})
+        self.assertEqual(result.recipes[0].ingredients[0].quantity,Decimal('0.001'))
+
     def test_ai_payload_contains_only_names_amounts_and_static_instructions(self):
         from nutrition.ai import request_recipes
         from io import BytesIO

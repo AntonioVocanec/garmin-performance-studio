@@ -118,3 +118,7 @@ GPS-20261115-nutrition-usda-entry-01 aktiviran je uz korisničko odobrenje. PID 
 ### Aktivacija prehrane i AI recepata · 16. 11. 2026.
 
 GPS-20261116-nutrition-ai-recovery-01 aktiviran je uz korisničko odobrenje. Uključuje jasnije jedinice prijema, opcionalni prag zaliha i AI dijagnostiku s novom potvrdom nakon greške. PID 7088, port 8787. Hashovi 20/20 frontend datoteka i sadržaj svih 36 tablica provjereni. SQLite v12, integritet i strane veze prolaze. Python 124/124, Chromium 6/6 na svježoj izoliranoj bazi, pnpm check i build prolaze. Prvi E2E pokušaj koristio je staru testnu bazu i pao na praznom stanju kupovine. Generiranje recepata provjereno je simuliranim odgovorima. Evidencija je u releases/GPS-20261116-nutrition-ai-recovery-01/local-activation.json.
+
+### Aktivacija AI količina · 16. 11. 2026.
+
+GPS-20261116-ai-quantity-schema-01 aktiviran uz odobrenje. PID 39976, port 8787. Python 125/125 i pnpm check prolaze. Zadržan prethodno verificirani frontend, potvrđeno 20/20 hashova. SQLite v12 i sadržaj svih 36 tablica provjereni, integritet i strane veze prolaze. Stvarni plaćeni AI poziv nije izvršen. Evidencija je u releases/GPS-20261116-ai-quantity-schema-01/local-activation.json.

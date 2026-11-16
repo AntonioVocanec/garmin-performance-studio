@@ -12,6 +12,7 @@ from .engine import fixed
 
 INSTRUCTIONS = (
     'Predloži 2 ili 3 recepta od navedenih namirnica u njihovim inventarnim jedinicama. '
+    'quantity i portions vrati kao JSON brojeve veće od nule, s najviše tri decimale i decimalnom točkom, bez jedinica. '
     'Količine označavaju raspoloživu zalihu. Za svaki recept odaberi samo količinu potrebnu za navedene porcije. '
     'Ako recept ima tri sastojka, primjer je mix [1, 2], zatim serve [1, 2, 3]. '
     'Prepiši nazive točno. Vrati porcije, minute, sastojke i strukturirane korake. '
@@ -79,6 +80,14 @@ def request_recipes(key,model,items):
     schema=m.AIOutput.model_json_schema()
     for obj in [schema,*schema.get('$defs',{}).values()]:
         if obj.get('type')=='object':obj['required']=list(obj.get('properties',{}))
+    # Decimal's default Pydantic schema permits arbitrary strings and numbers.
+    # Match the existing 12-digit, 3-decimal domain without floating-point conversion.
+    for definition, field in [('AIIngredient','quantity'), ('AIProposal','portions')]:
+        schema['$defs'][definition]['properties'][field] = {
+            'type':'number', 'minimum':0.001, 'maximum':999999999.999,
+            'multipleOf':0.001,
+            'description':'Pozitivan broj, najviše tri decimale, bez jedinice.'
+        }
     body={'model':model,'store':False,'max_output_tokens':4000,'instructions':INSTRUCTIONS,'input':dumps(items),'text':{'format':{'type':'json_schema','name':'nutrition_recipes','strict':True,'schema':schema}}}
     req=Request('https://api.openai.com/v1/responses',data=dumps(body).encode(),headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'},method='POST')
     for attempt in range(2):
@@ -126,6 +135,20 @@ def parse_response(payload):
             reason = f'korak navodi nepostojeći sastojak broj {ref}.'
         elif err['type']=='json_invalid':
             reason = 'Tekst recepta nije valjan JSON.'
+        elif loc and loc[-1] in ('quantity','portions'):
+            field = 'količina sastojka' if loc[-1]=='quantity' else 'broj porcija'
+            ingredient = f' {loc[-2]+1}' if loc[-1]=='quantity' and isinstance(loc[-2],int) else ''
+            reasons = {
+                'decimal_parsing':'treba biti decimalni broj s točkom, bez jedinice.',
+                'decimal_type':'treba biti decimalni broj.',
+                'greater_than':'mora biti veća od nule.',
+                'decimal_max_places':'smije imati najviše tri decimale.',
+                'decimal_max_digits':'je prevelika za podržanih 12 znamenki.',
+                'decimal_whole_digits':'je prevelika za najviše devet cijelih znamenki.',
+                'finite_number':'mora biti konačan broj.',
+                'missing':'nedostaje.'
+            }
+            reason = field + ingredient + ' ' + reasons.get(err['type'],'nije valjana pozitivna decimalna vrijednost.')
         else:
             labels = {'recipes':'recepti','ingredients':'sastojci','steps':'koraci','ingredientRefs':'brojevi sastojaka',
                       'quantity':'količina','action':'radnja','portions':'porcije','name':'naziv','minutes':'minute'}

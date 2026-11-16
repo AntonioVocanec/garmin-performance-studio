@@ -1,0 +1,23 @@
+{
+  "releaseId": "GPS-20261116-ai-quantity-schema-01",
+  "pid": 39976,
+  "previousPid": 7088,
+  "schema": 12,
+  "tablesPreserved": 36,
+  "frontendHashesVerified": 20,
+  "smokeHTTP200": [
+    "/",
+    "/api/health",
+    "/api/nutrition/profile",
+    "/api/nutrition/dashboard?date=2026-11-16",
+    "/api/nutrition/ai/status",
+    "/api/analytics/health?start=2026-11-09&end=2026-11-15"
+  ],
+  "backupDirectory": "C:\\Users\\carti\\Documents\\ChatGPT\\GarminActivationBackups\\GPS-ai-quantity-20261116-032646",
+  "tests": {
+    "python": 125,
+    "check": "0 errors, 0 warnings",
+    "frontend": "Reused previously verified build, 20 hashes matched"
+  },
+  "paidCalls": 0
+}
