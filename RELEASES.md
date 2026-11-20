@@ -126,3 +126,7 @@ GPS-20261116-ai-quantity-schema-01 aktiviran uz odobrenje. PID 39976, port 8787.
 ## GPS-20261120-nutrition-redesign-01
 
 Aktiviran je redizajn Prehrane do faze 4. Kod je u commitu `45775783401d10d0f37bc665d3166985dbd66009`. PID 38696 sluša na 127.0.0.1:8787. Provjereni su Tailscale HTTPS, 20/20 posluženih frontend datoteka, 14 HTTP provjera i Chromium prikaz na produkcijskom buildu. SQLite v12 prolazi integritet i provjeru stranih ključeva. Očuvan je sadržaj svih 36 tablica i izrađena je konzistentna sigurnosna kopija izvan rotacije. Izolirane provjere obuhvaćaju 126 Python testova, 104 Playwright scenarija, pnpm check i produkcijski build. Provjera stvarnim čitačem zaslona pripada fazi 5. [Manifest](releases/GPS-20261120-nutrition-redesign-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261120-nutrition-redesign-01/local-activation.json).
+
+## GPS-20261121-nutrition-my-day-01
+
+Dorada „Moj dan” aktivirana je na portu 8787. Nakon prestanka prethodnog procesa servis je pokrenut s PID-om 16368. Novi prikaz objedinjuje energiju i makronutrijente. Upozorenja se prikazuju u Zalihama. Provjereno je 20/20 frontend datoteka, jedan Chromium scenarij na aktivnom servisu i Tailscale HTTPS. SQLite v12 prolazi provjeru integriteta i stranih ključeva. Sadržaj svih 36 tablica očuvan je. U izdvojenom okruženju prošli su 18 ciljanih Playwright scenarija, pnpm check i build. [Manifest](releases/GPS-20261121-nutrition-my-day-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-nutrition-my-day-01/local-activation.json).

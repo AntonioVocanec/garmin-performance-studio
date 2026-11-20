@@ -1,0 +1,21 @@
+{
+  "databaseBackupSha256": "3532bd3220f891f94095d48f0a7af4941c0d37a9146b9fc4f674277005b78719",
+  "manifestSha256": "d0ae6dd9e4809d91a744736d5e275649b4279b697485791c7462e8e88d2efd55",
+  "migrationExecuted": false,
+  "pid": 16368,
+  "port": 8787,
+  "previousPid": 11612,
+  "productionChromiumSmoke": "PASS",
+  "releaseId": "GPS-20261121-nutrition-my-day-01",
+  "rollbackRelease": "GPS-20261120-nutrition-redesign-01",
+  "sourceCommit": "50cc76e5786452ca9b17f3e0ae986c139b34c88f",
+  "sqliteForeignKeys": "PASS",
+  "sqliteIntegrity": "PASS",
+  "sqliteSchema": 12,
+  "status": "PRODUCTION_ACTIVE",
+  "tailscaleHttpsHealth": "PASS",
+  "tailscaleIndexHash": "PASS",
+  "verifiedAt": "2026-11-21T00:41:40+01:00",
+  "verifiedFrontendFiles": 20,
+  "verifiedSqliteTables": 36
+}
