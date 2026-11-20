@@ -2,6 +2,9 @@
 .env.*
 !.env.example
 
+# Local agent instructions
+AGENTS.md
+
 # Local Garmin credentials and runtime files
 .garminconnect/
 .garminconnect-*/
