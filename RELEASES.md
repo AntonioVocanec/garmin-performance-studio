@@ -138,3 +138,7 @@ Kartice doprinosa oporavku prikazuju dostupnost mjerenja i pokrivenost višednev
 ## GPS-20261121-dashboard-readability-01
 
 Povećana je čitljivost kartica i grafikona u četiri glavna prikaza. Tehnički podaci o dohvaćanju uklonjeni su iz dnevnih kartica. Svih 20 datoteka provjereno je preko porta 8787. Chromium je provjerio veličinu teksta na 390, 836 i 1440 px uz simulirane podatke. [Manifest](releases/GPS-20261121-dashboard-readability-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-dashboard-readability-01/local-activation.json).
+
+## GPS-20261121-section-links-01
+
+Poveznice u traci Sekcije prikazuju nazive bez numeracije. Chromium je na aktivnoj verziji provjerio nazive i skok na sekciju. [Manifest](releases/GPS-20261121-section-links-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-section-links-01/local-activation.json).
