@@ -203,7 +203,8 @@ interface TimeSeriesBinding {
 }
 const timeSeriesBindings = new WeakMap<HTMLElement, TimeSeriesBinding>();
 const chartInspectorData = new WeakMap<HTMLDetailsElement, ChartInspectorData>();
-const textColor = "#91a5aa";
+const axisFont = 12;
+const textColor = "#aebfc4";
 const gridColor = "#29383e";
 let activeChartDateRange: { start: string; end: string } | null = null;
 let activeChartAnnotations: ChartAnnotation[] = [];
@@ -686,7 +687,7 @@ function makeLineOption(
         formatter: options.referenceLine.label,
         position: "insideEndTop",
         color: options.referenceLine.color ?? chartReferenceColor,
-        fontSize: 8,
+        fontSize: axisFont,
         backgroundColor: "rgba(12,20,25,.82)",
         padding: [2, 4],
         borderRadius: 3,
@@ -695,7 +696,6 @@ function makeLineOption(
     ...annotationData,
   ];
   const interval = Math.max(0, Math.ceil(points.length / 6) - 1);
-  const axisFont = window.matchMedia("(max-width: 520px)").matches ? 8 : 9;
   return {
     animation: false,
     aria: { enabled: true, label: { description: options.ariaLabel } },
@@ -746,7 +746,7 @@ function makeLineOption(
     },
     dataZoom: options.zoom
       ? [{ type: "inside", xAxisIndex: 0, zoomOnMouseWheel: false, moveOnMouseWheel: false, moveOnMouseMove: true },
-        { type: "slider", xAxisIndex: 0, height: 12, bottom: 1, borderColor: "transparent", backgroundColor: "#1b2a30", fillerColor: "rgba(105,215,239,.2)", handleStyle: { color: options.color }, textStyle: { color: textColor, fontSize: 8 }, dataBackground: { lineStyle: { color: "#45606a" }, areaStyle: { color: "#24363d" } } }]
+        { type: "slider", xAxisIndex: 0, height: 12, bottom: 1, borderColor: "transparent", backgroundColor: "#1b2a30", fillerColor: "rgba(105,215,239,.2)", handleStyle: { color: options.color }, textStyle: { color: textColor, fontSize: axisFont }, dataBackground: { lineStyle: { color: "#45606a" }, areaStyle: { color: "#24363d" } } }]
       : undefined,
     series: [{
       name,
@@ -870,7 +870,7 @@ export function renderEcgWaveform(
       boundaryGap: false,
       axisTick: { show: false },
       axisLine: { lineStyle: { color: gridColor } },
-      axisLabel: { color: textColor, fontSize: 8, interval, formatter: (value: string) => `${value} s` },
+      axisLabel: { color: textColor, fontSize: axisFont, interval, formatter: (value: string) => `${value} s` },
     },
     yAxis: {
       type: "value",
@@ -919,7 +919,6 @@ export function renderIntradayLineChart(
   const formatValue = options.formatValue ?? ((value: number) => value.toLocaleString("hr-HR", { maximumFractionDigits: 0 }));
   const labels = points.map((point) => String(point.time ?? ""));
   const interval = Math.max(0, Math.ceil(points.length / 6) - 1);
-  const axisFont = window.matchMedia("(max-width: 520px)").matches ? 8 : 9;
   chart?.setOption({
     animation: false,
     aria: { enabled: true, label: { description: options.ariaLabel } },
@@ -997,7 +996,6 @@ export function renderActivityMetric(
   chartTarget.removeAttribute("aria-keyshortcuts");
   const chart = echarts.getInstanceByDom(chartTarget);
   const series = usable.map((point) => [valueOf(point, "elapsedSeconds"), valueOf(point, key)]);
-  const axisFont = window.matchMedia("(max-width: 520px)").matches ? 8 : 9;
   chart?.setOption({
     animation: false,
     aria: { enabled: true, label: { description: ariaLabel } },
@@ -1027,7 +1025,7 @@ export function renderActivityMetric(
     yAxis: {
       type: "value",
       name: unit,
-      nameTextStyle: { color: textColor, fontSize: 8 },
+      nameTextStyle: { color: textColor, fontSize: axisFont },
       scale: true,
       splitNumber: 4,
       axisTick: { show: false },
@@ -1092,7 +1090,7 @@ export function renderPairLineChart(
       left: "center",
       itemWidth: 8,
       itemHeight: 8,
-      textStyle: { color: textColor, fontSize: 9 },
+      textStyle: { color: textColor, fontSize: axisFont },
       data: [labelA, labelB],
     },
     grid: { top: 12, right: 8, bottom: 38, left: 42 },
@@ -1187,7 +1185,7 @@ export function renderTimelineSeriesChart(
       itemWidth: 9,
       itemHeight: 9,
       itemGap: 8,
-      textStyle: { color: textColor, fontSize: 8 },
+      textStyle: { color: textColor, fontSize: axisFont },
       data: series.map((item) => item.label),
       selected: Object.fromEntries(series.map((item) => [item.label, item.initiallySelected !== false])),
     } : undefined,
@@ -1263,7 +1261,6 @@ export function renderCorrelationScatter(
   const regressionData = options.regression && minX !== maxX
     ? [[minX, options.regression.slope * minX + options.regression.intercept], [maxX, options.regression.slope * maxX + options.regression.intercept]]
     : [];
-  const axisFont = window.matchMedia("(max-width: 520px)").matches ? 8 : 9;
   chart?.setOption({
     animation: false,
     aria: { enabled: true, label: { description: `${options.yLabel} u odnosu na ${options.xLabel}, po zajedničkim datumima` } },
@@ -1379,7 +1376,7 @@ export function renderWeeklyVolume(id: string, points: Point[], sportLabel = "Tr
       data: labels,
       axisTick: { show: false },
       axisLine: { lineStyle: { color: gridColor } },
-      axisLabel: { color: textColor, fontSize: 8, hideOverlap: true, interval: Math.max(0, Math.ceil(displayPoints.length / 8) - 1), formatter: (value: string) => shortDate(value) },
+      axisLabel: { color: textColor, fontSize: axisFont, hideOverlap: true, interval: Math.max(0, Math.ceil(displayPoints.length / 8) - 1), formatter: (value: string) => shortDate(value) },
     },
     yAxis: {
       type: "value",
@@ -1388,7 +1385,7 @@ export function renderWeeklyVolume(id: string, points: Point[], sportLabel = "Tr
       axisTick: { show: false },
       axisLine: { show: false },
       splitLine: { lineStyle: { color: gridColor } },
-      axisLabel: { color: textColor, fontSize: 8, formatter: (value: number) => `${Math.round(value)} km` },
+      axisLabel: { color: textColor, fontSize: axisFont, formatter: (value: number) => `${Math.round(value)} km` },
     },
     series: [{
       type: "bar",
@@ -1427,7 +1424,7 @@ export function renderHeartRateZoneComparison(
     aria: { enabled: true, label: { description: "Usporedba raspodjele vremena trčanja u Garminovim zonama pulsa, posljednja četiri tjedna prema prethodna četiri" } },
     color: colors,
     grid: { top: 22, right: 12, bottom: 43, left: 38, containLabel: false },
-    legend: { bottom: 0, left: "center", itemWidth: 9, itemHeight: 8, itemGap: 12, textStyle: { color: textColor, fontSize: 9 }, data: legendNames },
+    legend: { bottom: 0, left: "center", itemWidth: 9, itemHeight: 8, itemGap: 12, textStyle: { color: textColor, fontSize: axisFont }, data: legendNames },
     tooltip: {
       ...tooltipBase,
       trigger: "axis",
@@ -1454,7 +1451,7 @@ export function renderHeartRateZoneComparison(
       data: ["Prethodna 4 tjedna", "Posljednja 4 tjedna"],
       axisTick: { show: false },
       axisLine: { lineStyle: { color: gridColor } },
-      axisLabel: { color: textColor, fontSize: 8, interval: 0, hideOverlap: false, lineHeight: 11 },
+      axisLabel: { color: textColor, fontSize: axisFont, interval: 0, hideOverlap: true, lineHeight: 15 },
     },
     yAxis: {
       type: "value",
@@ -1464,7 +1461,7 @@ export function renderHeartRateZoneComparison(
       axisTick: { show: false },
       axisLine: { show: false },
       splitLine: { lineStyle: { color: gridColor } },
-      axisLabel: { color: textColor, fontSize: 8, formatter: (value: number) => `${Math.round(value)}%` },
+      axisLabel: { color: textColor, fontSize: axisFont, formatter: (value: number) => `${Math.round(value)}%` },
     },
     series: names.map((_, index) => ({
       name: legendNames[index],

@@ -35,6 +35,6 @@
     border-radius: 10px;
     background: #2a2111;
     color: #f2ca71;
-    font-size: 12px;
+    font-size: var(--text-detail);
   }
 </style>

@@ -366,6 +366,20 @@ test("saves the subjective check-in through the JSON API", async ({ page }) => {
   });
 });
 
+test("keeps sleep and HRV explanations readable across viewport sizes", async ({ page }) => {
+  await mockDashboardApi(page);
+  await page.goto("/");
+  for (const width of [390, 836, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const context = page.locator("#today-sleep-context");
+    await expect(context).toBeVisible();
+    const size = await context.evaluate(node => parseFloat(getComputedStyle(node).fontSize));
+    expect(size).toBeGreaterThanOrEqual(14);
+    await expect(page.locator(".hero")).not.toContainText("read-only");
+    await expectActiveViewCentered(page);
+  }
+});
+
 test("keeps the mobile layout within the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockDashboardApi(page);

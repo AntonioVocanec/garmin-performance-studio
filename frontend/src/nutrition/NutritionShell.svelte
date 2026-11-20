@@ -561,7 +561,7 @@
    </article>
  </div>
  {:else if view==='trends' && diary}
- <article class="panel"><h3>Garmin energetski kontekst</h3><strong class="nutrition-value">{fmt(energy?.totalCalories,0)} <small>kcal ukupno</small></strong><p>Aktivno {fmt(energy?.activeCalories,0)} kcal · mirovanje {fmt(energy?.restingCalories,0)} kcal</p><p>Lokalna procjena punog dana: ≈{fmt(energy?.localEstimate,0)} kcal</p><p>Bilanca do sinkronizacije: {fmt(balance,0)} kcal</p><p class="quiet">{energy?.source??'Garmin'} · {energy?.date??date} · {energy==null?'Učitavanje':energy.totalCalories==null?'Nedostupno':energy.status==='partial'?'Djelomično':'Dostupno'} · {energy?.fetchedAt??'vrijeme nije dostupno'}. {diary.complete?'':'Dnevnik je nepotpun.'}</p></article>
+ <article class="panel"><h3>Garmin energetski kontekst</h3><strong class="nutrition-value">{fmt(energy?.totalCalories,0)} <small>kcal ukupno</small></strong><p>Aktivno {fmt(energy?.activeCalories,0)} kcal · mirovanje {fmt(energy?.restingCalories,0)} kcal</p><p>Lokalna procjena punog dana: ≈{fmt(energy?.localEstimate,0)} kcal</p><p>Bilanca do sinkronizacije: {fmt(balance,0)} kcal</p><p class="quiet">{energy?.source??'Garmin'} · {energy?.date??date} · {energy==null?'Učitavanje':energy.totalCalories==null?'Nedostupno':energy.status==='partial'?'Djelomično':'Dostupno'}. {diary.complete?'':'Dnevnik je nepotpun.'}</p></article>
  <NutritionCharts {days} {energy}/>
  <NutritionTraining {date}/>
  {:else if view==='inventory'}
