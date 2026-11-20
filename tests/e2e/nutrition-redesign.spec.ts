@@ -29,6 +29,8 @@ for (const width of [390, 1440]) {
     const receipt = page.getByRole('dialog', { name: 'Prijem namirnica' });
     await receipt.getByRole('combobox', { name: 'Namirnica', exact: true }).selectOption(food.id);
     await receipt.getByLabel('Količina za prijem · g').fill('500');
+    const today = await receipt.getByLabel('Datum stvarnog primitka').inputValue();
+    await receipt.getByLabel('Rok', { exact: true }).fill(today);
     await receipt.screenshot({ path: info.outputPath('01-prijem.png') });
     await receipt.getByRole('button', { name: 'Potvrdi prijem' }).click();
     await expect(nutrition.getByRole('status')).toBeVisible();
@@ -69,6 +71,16 @@ for (const width of [390, 1440]) {
     const day = await page.locator('#date').inputValue();
     const diary = (await (await request.get('/api/nutrition/diary?date=' + day)).json()).data;
     expect(diary.entries.filter((entry: {name:string}) => entry.name === recipeName)).toHaveLength(1);
+    await expect(nutrition.getByRole('heading', { name: 'Upozorenja zaliha' })).toHaveCount(0);
+    await expect(nutrition.getByRole('heading', { name: 'Meal Prep i plan' })).toHaveCount(0);
+    await openNutritionSection(page, 'inventory');
+    const alerts = nutrition.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Upozorenja zaliha' }) });
+    await expect(alerts.getByText(foodName, { exact: true })).toBeVisible();
+    await expect(alerts).toContainText('Rok ' + today);
+    await page.locator('#date').fill('2020-01-01');
+    await page.locator('#date').dispatchEvent('change');
+    await expect(nutrition).toHaveAttribute('aria-busy', 'false');
+    await expect(alerts.getByText(foodName, { exact: true })).toBeVisible();
   });
 }
 
@@ -134,6 +146,10 @@ for (const width of [320, 390, 1440]) {
       date:new URL(route.request().url()).searchParams.get('date'),complete:false,targets:{},entries:[],
       nutrients:{kcal:null,protein:null,carbs:null,fat:null,fiber:null}
     }}}));
+    await page.route('**/api/nutrition/dashboard?**', route => route.fulfill({ json: { ok: true, data: {
+      diary: { date: new URL(route.request().url()).searchParams.get('date') },
+      meals: [], portions: [], alerts: [], lowStock: [],
+    } } }));
     await page.route('**/api/nutrition/energy?**', route => route.fulfill({json:{ok:true,data:{
       date:new URL(route.request().url()).searchParams.get('date'),status:'unavailable',totalCalories:null
     }}}));
@@ -142,7 +158,9 @@ for (const width of [320, 390, 1440]) {
     await expect(trigger).toBeEnabled();
     await expect(trigger).toBeInViewport({ ratio: 1 });
     await expect(page.locator('#nutrition-energy-chart')).toHaveCount(0);
-    await expect(page.getByText('Dan bez evidentiranih obroka')).toBeVisible();
+    await expect(page.getByText('Nema evidentiranih ni planiranih obroka za ovaj dan.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Upozorenja zaliha' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Meal Prep i plan' })).toHaveCount(0);
     if(width>320)await page.screenshot({path:info.outputPath('moj-dan.png')});
     await trigger.press('Enter');
     const dialog=page.getByRole('dialog',{name:'Dodaj obrok'});

@@ -152,3 +152,4 @@ Rad je započet prema sažetku razgovora Product Lab. Nakon što je izvorni plan
 - Spremljena verzija recepta ostaje dostupna za ranije zakazanu pripremu i planirani obrok. Pristup verziji koristi novu rutu samo za čitanje. Ovaj dio ne zahtijeva migraciju baze.
 - Provjereni su pregled za slanje, privola, osvježavanje nakon neuspjeha i zadržavanje primljenih AI prijedloga u novom odredištu, sa simuliranim odgovorima.
 - Prošlo je 126/126 Python testova i 104/104 Playwright scenarija. Prošli su pnpm check, izdvojeni Vite build i git diff --check. Faza je dostupna u razvojnom kodu.
+- Dorada pregleda „Moj dan” prikazuje dnevnik i objedinjeni sažetak unosa. Raspored pripreme i gotove porcije dostupni su u Kuhinji, a upozorenja su u Zalihama i koriste aktualni datum zalihe. Prošlo je 18 ciljanih Playwright scenarija, pnpm check i izdvojeni build.

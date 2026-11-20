@@ -8,7 +8,7 @@
  import NutritionCharts from './NutritionCharts.svelte';
  import NutritionTraining from '../analytics/NutritionTraining.svelte';
  let view=$state('overview'),active=$state(false),date=$state(''),loading=$state(false),busy=$state(false),error=$state(''),message=$state('');
- let foods=$state<Food[]>([]),recipes=$state<Recipe[]>([]),lots=$state<Lot[]>([]),profile=$state<Profile>({version:0}),diary=$state<Diary|null>(null),overview=$state<Overview|null>(null),plans=$state<PlanEntry[]>([]),lists=$state<Shopping[]>([]),days=$state<Diary[]>([]),energy=$state<Energy|null>(null);
+ let foods=$state<Food[]>([]),recipes=$state<Recipe[]>([]),lots=$state<Lot[]>([]),profile=$state<Profile>({version:0}),diary=$state<Diary|null>(null),overviewResponse=$state<Overview|null>(null),plans=$state<PlanEntry[]>([]),lists=$state<Shopping[]>([]),days=$state<Diary[]>([]),energy=$state<Energy|null>(null);
  let history=$state<{id:string;operation_id:string;created_at:string;reason:string;delta:number;reversed_by:string|null}[]>([]);
  let foodEdit=$state<Food|null>(null),recipeEdit=$state<Recipe|null>(null),search=$state(''),recipeFilter=$state('');
  let editorOpen=$state(false),editorVersion=$state(0);
@@ -46,6 +46,13 @@
  const isDailyView=$derived(view==='overview'||view==='diary');
  const planStatusLabels:Record<string,string>={planned:'Planirano',prepared:'Pripremljeno u planu',
    consumed:'Označeno konzumirano u planu',skipped:'Preskočeno u planu'};
+ const overview=$derived(overviewResponse?.diary.date===date?overviewResponse:null);
+ const stockOverview=$derived(overviewResponse?.diary.date===receiptToday()?overviewResponse:null);
+ const dayMeals=$derived(Object.entries(mealLabels).map(([key,label])=>({
+   label,key,
+   entries:diary?.entries.filter(entry=>entry.meal===key)??[],
+   planned:overview?.meals.filter(meal=>meal.meal===key)??[],
+ })).filter(meal=>meal.entries.length||meal.planned.length));
  const selectedPortion=$derived(logKind==='portion'?overview?.portions.find(l=>l.id===logSource):undefined);
  const portionQuantity=$derived(Number(logQuantity.replace(',','.')));
  const nutritionSection=$derived('nutrition-'+view);
@@ -108,11 +115,11 @@
      ? Number(diary.nutrients.kcal)-energy.totalCalories : null
  );
  const allDays=$derived(date?Array.from({length:7},(_,i)=>shift(weekStart(date),i)):[]);
- async function load(){if(!active||!date)return;const requestedDate=date,revision=contextRevision;controller?.abort();controller=new AbortController();const signal=controller.signal;loading=true;error='';
- try{const [f,r,l,p,d,o,pl,sl,h,ds,sch,ps]=await Promise.all([api<Food[]>('/foods','GET',undefined,signal),api<Recipe[]>('/recipes','GET',undefined,signal),api<Lot[]>('/inventory','GET',undefined,signal),api<Profile>('/profile','GET',undefined,signal),api<Diary>(`/diary?date=${date}`,'GET',undefined,signal),api<Overview>(`/dashboard?date=${date}`,'GET',undefined,signal),api<PlanEntry[]>(`/plan?week=${weekStart(date)}`,'GET',undefined,signal),api<Shopping[]>('/shopping/lists','GET',undefined,signal),api<typeof history>('/inventory/history','GET',undefined,signal),api<Diary[]>(`/analytics?start=${shift(date,-6)}&end=${date}`,'GET',undefined,signal),api<typeof schedule>('/prep/schedule','GET',undefined,signal),api<NonNullable<typeof planSummary>>(`/plan/summary?week=${weekStart(date)}`,'GET',undefined,signal)]);if(signal.aborted||date!==requestedDate||revision!==contextRevision||!active)return;
+ async function load(){if(!active||!date)return;const requestedDate=date,overviewDate=view==='inventory'?receiptToday():date,revision=contextRevision;controller?.abort();controller=new AbortController();const signal=controller.signal;loading=true;error='';
+ try{const [f,r,l,p,d,o,pl,sl,h,ds,sch,ps]=await Promise.all([api<Food[]>('/foods','GET',undefined,signal),api<Recipe[]>('/recipes','GET',undefined,signal),api<Lot[]>('/inventory','GET',undefined,signal),api<Profile>('/profile','GET',undefined,signal),api<Diary>(`/diary?date=${date}`,'GET',undefined,signal),api<Overview>(`/dashboard?date=${overviewDate}`,'GET',undefined,signal),api<PlanEntry[]>(`/plan?week=${weekStart(date)}`,'GET',undefined,signal),api<Shopping[]>('/shopping/lists','GET',undefined,signal),api<typeof history>('/inventory/history','GET',undefined,signal),api<Diary[]>(`/analytics?start=${shift(date,-6)}&end=${date}`,'GET',undefined,signal),api<typeof schedule>('/prep/schedule','GET',undefined,signal),api<NonNullable<typeof planSummary>>(`/plan/summary?week=${weekStart(date)}`,'GET',undefined,signal)]);if(signal.aborted||date!==requestedDate||revision!==contextRevision||!active)return;
  if(d.date!==requestedDate){diary=null;throw new Error('Datum primljenog dnevnika ne odgovara odabranom danu. Osvježi prehranu.')}
  const revealDiary=!diary&&view==='diary';
- foods=f;recipes=r;lots=l;profile=p;if(!prepQuantity&&p.prepPortions)prepQuantity=String(p.prepPortions);diary=d;overview=o.diary.date===requestedDate?o:null;plans=pl;lists=sl;history=h;days=ds;schedule=sch;planSummary=ps;
+ foods=f;recipes=r;lots=l;profile=p;if(!prepQuantity&&p.prepPortions)prepQuantity=String(p.prepPortions);diary=d;overviewResponse=o.diary.date===overviewDate?o:null;plans=pl;lists=sl;history=h;days=ds;schedule=sch;planSummary=ps;
  if(revealDiary){
    await tick();
    if(revision===contextRevision&&view==='diary')window.dispatchEvent(new Event('dashboard:content-updated'));
@@ -217,7 +224,7 @@
      energyController?.abort();
      energy=null;
      diary=null;
-     overview=null;
+     overviewResponse=null;
      days=[];
      if(!sameWeek){plans=[];planSummary=null}
      refresh();
@@ -478,9 +485,9 @@
  <div class="nutrition-toolbar">
    <div class="nutrition-heading">
      <h2>{titles[view]}</h2>
-     <span class="badge">{date} · lokalna prehrana</span>
-     {#if isDailyView && diary}
-       <span class="badge">{diary.complete?'Potvrđen dan':diary.entries.length?'Dnevnik nije zaključen':'Dan bez evidentiranih obroka'}</span>
+     <span class="badge"><time datetime={date}>{date}</time></span>
+     {#if isDailyView && diary && (diary.complete || diary.entries.length)}
+       <span class="badge">{diary.complete?'Potvrđen dan':'Dnevnik nije zaključen'}</span>
      {/if}
    </div>
    {#if active && isDailyView}
@@ -498,17 +505,12 @@
  {#if active}
  {#if isDailyView && diary}
  <div class="nutrition-day">
-   <div class="nutrition-day-summary">
-     <article class="panel"><h3>Energija</h3><strong class="nutrition-value">{fmt(diary.nutrients.kcal,0)} <small>kcal</small></strong>{#if nutritionTargets.calories}<p>Cilj {fmt(nutritionTargets.calories,0)} kcal</p>{:else}<button class="btn" onclick={()=>{if(profileDetails){profileDetails.open=true;profileDetails.querySelector('summary')?.focus()}}}>Postavi cilj</button>{/if}{#if nutritionTargets.calories&&diary.nutrients.kcal!==null}<progress max="100" value={Math.min(100,Number(diary.nutrients.kcal)/Number(nutritionTargets.calories)*100)}></progress><p>{fmt(Number(diary.nutrients.kcal)/Number(nutritionTargets.calories)*100,0)}% cilja</p>{/if}</article>
-     <article class="panel"><h3>Makronutrijenti</h3>{#each [['protein','Proteini'],['carbs','Ugljikohidrati'],['fat','Masti']] as [key,label]}<div class="nutrition-kv"><span>{label}</span><b>{fmt(comparableMacros?.[key as keyof typeof diary.nutrients])} / {fmt(nutritionTargets[key])} g</b></div>{/each}<p class="quiet">{carbExplanation(diary.carbComparison)}</p><p class="quiet">UH {fmt(diary.nutrients.carbs)} g prema izvornim zapisima.</p><p class="quiet">Vlakna {fmt(diary.nutrients.fiber)} g · energija prema izvornoj deklaraciji.</p></article>
-     <a class="btn nutrition-link" href="#nutrition-trends">Otvori trendove</a>
-   </div>
    <article class="panel nutrition-day-meals" id="nutrition-diary">
      <h3>Dnevnik prehrane</h3>
-     {#each Object.entries(mealLabels) as [key,label]}
+     {#each dayMeals as meal (meal.key)}
        <section class="nutrition-meal">
-         <h4>{label}</h4>
-         {#each diary.entries.filter(e=>e.meal===key) as entry (entry.id)}
+         <h4>{meal.label}</h4>
+         {#each meal.entries as entry (entry.id)}
            <div class="nutrition-row">
              <div>
                <span class="badge">Evidentirano</span>
@@ -517,26 +519,68 @@
              <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/operations/${entry.operation_id}/reverse`,'POST'),'Unos je poništen kompenzacijom povezanog inventara.')}>Poništi unos</button>
            </div>
          {/each}
-         {#each (overview?.meals??[]).filter(meal=>meal.meal===key) as meal (meal.id)}
-           <p><span class="badge">{planStatusLabels[meal.status]??'Iz plana'}</span> <b>{meal.name}</b> · {meal.portions} porcija</p>
+         {#each meal.planned as planned (planned.id)}
+           <p><span class="badge">{planStatusLabels[planned.status]??'Iz plana'}</span> <b>{planned.name}</b> · {fmt(planned.portions,3)} porcija</p>
          {/each}
-         {#if !diary.entries.some(entry=>entry.meal===key) && !overview?.meals.some(meal=>meal.meal===key)}
-           <p class="quiet">Nema obroka.</p>
-         {/if}
        </section>
+     {:else}
+       <div class="nutrition-day-empty">
+         <p>{overview?'Nema evidentiranih ni planiranih obroka za ovaj dan.':'Dan bez evidentiranih obroka'}</p>
+       </div>
      {/each}
      <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/diary/days/${date}`,'PUT',{complete:!diary!.complete}))}>{diary.complete?'Ponovno otvori dan':'Potvrdi da je dnevnik za dan potpun'}</button>
    </article>
- </div>
- <div class="nutrition-grid">
-   <article class="panel"><h3>Meal Prep i plan</h3><strong class="nutrition-value">{fmt(overview?.portions.reduce((s,l)=>s+Number(l.quantity),0)??0)} <small>gotovih porcija</small></strong><p>{overview?.meals.length??0} planiranih obroka danas</p><p>Sljedeća priprema: {schedule[0]?`${schedule[0].planned_date} · ${schedule[0].name}`:"nije planirana"}</p>{#if energy?.nextRun}<p>Sljedeći trening: {energy.nextRun.title} · {energy.nextRun.date??'datum prema Runna planu'}</p>{/if}<a class="btn nutrition-link" href="#nutrition-prep">Pripremi unaprijed</a></article>
-   <article class="panel nutrition-wide"><h3>Upozorenja zaliha</h3>{#each overview?.alerts??[] as l}<p>{l.name} · {l.quantity} {l.unit} · rok {l.expires_on}</p>{:else}<p class="quiet">Nema zabilježenih lotova s rokom u sljedeća 3 dana.</p>{/each}{#each overview?.lowStock??[] as f}<p>Niska zaliha: {f.name} · minimum {f.minimumQuantity} {f.unit}</p>{/each}<div class="nutrition-actions"><a class="btn nutrition-link" href="#nutrition-inventory">Stanje zaliha</a><a class="btn nutrition-link" href="#nutrition-ai-recipes">AI recepti</a><a class="btn nutrition-link" href="#nutrition-shopping">Kupovina</a></div></article>
+   <article class="panel nutrition-day-summary">
+     <section>
+       <h3>Energija</h3>
+       <strong class="nutrition-value">{fmt(diary.nutrients.kcal,0)} <small>kcal uneseno</small></strong>
+       {#if nutritionTargets.calories}
+         <p>Cilj {fmt(nutritionTargets.calories,0)} kcal</p>
+       {:else}
+         <button class="btn" onclick={()=>{if(profileDetails){profileDetails.open=true;profileDetails.querySelector('summary')?.focus()}}}>Postavi cilj</button>
+       {/if}
+       {#if nutritionTargets.calories&&diary.nutrients.kcal!==null}
+         <progress aria-label="Napredak prema dnevnom kalorijskom cilju" max="100" value={Math.min(100,Number(diary.nutrients.kcal)/Number(nutritionTargets.calories)*100)}></progress>
+         <p>{fmt(Number(diary.nutrients.kcal)/Number(nutritionTargets.calories)*100,0)}% cilja</p>
+       {/if}
+     </section>
+     <section>
+       <div class="nutrition-day-summary-heading">
+         <h3>Makronutrijenti</h3>
+         <span class="quiet">Unos / cilj</span>
+       </div>
+       {#each [['protein','Proteini'],['carbs','Ugljikohidrati'],['fat','Masti']] as [key,label]}
+         <div class="nutrition-kv"><span>{label}</span><b>{fmt(comparableMacros?.[key as keyof typeof diary.nutrients])} / {fmt(nutritionTargets[key])} g</b></div>
+       {/each}
+       {#if diary.entries.length}
+         <p class="quiet">{carbExplanation(diary.carbComparison)}</p>
+         <p class="quiet">UH {fmt(diary.nutrients.carbs)} g prema izvornim zapisima.</p>
+         <p class="quiet">Vlakna {fmt(diary.nutrients.fiber)} g · energija prema izvornoj deklaraciji.</p>
+       {/if}
+     </section>
+   </article>
  </div>
  {:else if view==='trends' && diary}
  <article class="panel"><h3>Garmin energetski kontekst</h3><strong class="nutrition-value">{fmt(energy?.totalCalories,0)} <small>kcal ukupno</small></strong><p>Aktivno {fmt(energy?.activeCalories,0)} kcal · mirovanje {fmt(energy?.restingCalories,0)} kcal</p><p>Lokalna procjena punog dana: ≈{fmt(energy?.localEstimate,0)} kcal</p><p>Bilanca do sinkronizacije: {fmt(balance,0)} kcal</p><p class="quiet">{energy?.source??'Garmin'} · {energy?.date??date} · {energy==null?'Učitavanje':energy.totalCalories==null?'Nedostupno':energy.status==='partial'?'Djelomično':'Dostupno'} · {energy?.fetchedAt??'vrijeme nije dostupno'}. {diary.complete?'':'Dnevnik je nepotpun.'}</p></article>
  <NutritionCharts {days} {energy}/>
  <NutritionTraining {date}/>
  {:else if view==='inventory'}
+ {#if stockOverview && (stockOverview.alerts.length || stockOverview.lowStock.length)}
+   <article class="panel">
+     <h3>Upozorenja zaliha</h3>
+     <ul class="nutrition-stock-alerts">
+       {#each stockOverview.alerts as lot (lot.id)}
+         <li>
+           <strong>{lot.name}</strong>
+           <span>{lot.quantity} {lot.unit} · {lot.expires_on && lot.expires_on < stockOverview.diary.date?'Istekao rok':'Rok'} {lot.expires_on}</span>
+         </li>
+       {/each}
+       {#each stockOverview.lowStock as food (food.id)}
+         <li><strong>{food.name}</strong><span>Ispod minimalne zalihe od {food.minimumQuantity} {food.unit}</span></li>
+       {/each}
+     </ul>
+   </article>
+ {/if}
  <p class="quiet">Trenutačne zalihe. Namirnice s najbližim rokom prikazane su prve.</p>
  <div class="nutrition-grid">{#each inventoryLots as lot (lot.id)}<article class="panel"><h3>{lot.name}</h3>{#if Number(lot.expiredQuantity)>0}<span class="badge">Istekao rok</span>{/if}<strong class="nutrition-value">{lot.quantity} <small>{lot.unit}</small></strong><p>{locationLabels[lot.location]} · rok {lot.expires_on??'nije zadan'}</p><p>Raspoloživo {lot.availableQuantity??'—'} {lot.unit} · isteklo {lot.expiredQuantity??'—'} {lot.unit}</p><p class="quiet">Primitak ili priprema {lot.receivedOn??'datum nije poznat; zaliha je isključena iz raspoloživosti'}</p><details><summary>Otpad, premještanje ili korekcija</summary><form class="nutrition-form" onsubmit={(e)=>lotAction(e,lot)}><label>Operacija<select name="kind"><option value="waste">Otpad</option><option value="transfers">Premjesti količinu</option><option value="adjustments">Postavi ispravno stanje</option></select></label><label>Količina<input name="quantity" required inputmode="decimal"/></label><label>Lokacija<select name="location">{#each Object.entries(locationLabels) as [k,l]}<option value={k}>{l}</option>{/each}</select></label><label>Razlog<input name="reason" required maxlength="300"/></label><button class="btn" disabled={busy}>Potvrdi promjenu</button></form></details></article>{:else}<article class="panel"><p class="quiet">Nema namirnica na stanju. Odaberi Zaprimi namirnicu za prvi primitak.</p></article>{/each}</div>
  {:else if view==='ai-recipes'}
@@ -745,7 +789,7 @@
    <p>{fmt(planSummary?.nutrients.kcal,0)} kcal · {fmt(planSummary?.nutrients.protein)} g proteina · procjena troška {fmt(planSummary?.estimatedCost,2)} EUR</p>
    <p class="quiet">Zbroj uključuje planirane obroke. Ako nedostaje deklaracija ili nabavna cijena, odgovarajuća vrijednost ostaje nepotpuna.</p>
  </article>
- <details class="panel nutrition-details"><summary>Sportska prehrana · tvoja pravila</summary><p class="quiet">Sljedeći trening: {energy?.nextRun?.title??'nije dostupan'}. Ovdje sam određuješ prilagodbu; ne izračunava se iz aktivnih kalorija.</p><form class="nutrition-form" onsubmit={(e)=>{e.preventDefault();void adaptive()}}><label>Planirano trajanje · min<input required inputmode="numeric" bind:value={trainingMinutes}/></label><label>Tvoj dodatni kalorijski cilj · kcal<input required inputmode="decimal" bind:value={extraCalories}/></label><label>Tvoj dodatni cilj UH · g<input required inputmode="decimal" bind:value={extraCarbs}/></label><p>Prilagodba se sprema od {date}. Trajanje {trainingMinutes||'nije zadano'} min služi kao tvoj kontekst.</p><button class="btn" disabled={busy}>Potvrdi i spremi prilagođene ciljeve</button></form></details>
+ <details class="panel nutrition-details"><summary>Sportska prehrana · tvoja pravila</summary><p class="quiet">Sljedeći trening: {energy?.nextRun?.title??'nije dostupan'}{energy?.nextRun?.date?' · '+energy.nextRun.date:''}. Ovdje sam određuješ prilagodbu; ne izračunava se iz aktivnih kalorija.</p><form class="nutrition-form" onsubmit={(e)=>{e.preventDefault();void adaptive()}}><label>Planirano trajanje · min<input required inputmode="numeric" bind:value={trainingMinutes}/></label><label>Tvoj dodatni kalorijski cilj · kcal<input required inputmode="decimal" bind:value={extraCalories}/></label><label>Tvoj dodatni cilj UH · g<input required inputmode="decimal" bind:value={extraCarbs}/></label><p>Prilagodba se sprema od {date}. Trajanje {trainingMinutes||'nije zadano'} min služi kao tvoj kontekst.</p><button class="btn" disabled={busy}>Potvrdi i spremi prilagođene ciljeve</button></form></details>
  {:else if view==='shopping'}
  {#each lists as list (list.id)}<article class="panel"><h3>{list.name}</h3><details><summary>Ručno dodaj namirnicu</summary><form class="nutrition-form" onsubmit={(e)=>{e.preventDefault();const f=new FormData(e.currentTarget as HTMLFormElement);void action(()=>api(`/shopping/lists/${list.id}/items`,'POST',{foodId:String(f.get('foodId')),quantity:String(f.get('quantity')),packageSize:String(f.get('packageSize'))||null}))}}><label>Namirnica<select name="foodId" required><option value="">Odaberi</option>{#each foods as f}<option value={f.id}>{f.name} · {f.unit}</option>{/each}</select></label><label>Količina<input name="quantity" required inputmode="decimal"/></label><label>Veličina pakiranja<input name="packageSize" inputmode="decimal"/></label><button class="btn" disabled={busy}>Dodaj na listu</button></form></details>{#each list.items as item (item.id)}<details class="nutrition-notice"><summary>{item.name} · {item.quantity} {item.unit} · {item.received?'zaprimljeno':item.checked?'kupljeno':'za kupnju'}</summary>
  {#if !item.received}<form class="nutrition-form" onsubmit={(e)=>{e.preventDefault();const f=new FormData(e.currentTarget as HTMLFormElement);void action(()=>api(`/shopping/items/${item.id}`,'PATCH',{quantity:String(f.get('quantity')),packageSize:String(f.get('packageSize'))||null,checked:f.get('checked')==='on',expectedVersion:item.version}))}}><label>Potrebna količina<input name="quantity" value={item.quantity} required inputmode="decimal"/></label><label>Veličina pakiranja<input name="packageSize" value={item.packageSize??''} inputmode="decimal"/></label>{#if item.packageSize}<p>Pakiranja: {Math.ceil(Number(item.quantity)/Number(item.packageSize))}</p>{/if}<label class="nutrition-check"><input type="checkbox" name="checked" checked={item.checked}/>Kupljeno (još ne mijenja inventar)</label><button class="btn" disabled={busy}>Spremi stavku</button></form>
