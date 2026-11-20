@@ -3,6 +3,7 @@ export type Nutrients = Record<'kcal'|'protein'|'carbs'|'fat'|'fiber', string|nu
 export interface CookingPreview {
  portions:string;feasible:boolean;previewToken:string;nutrients:Nutrients;cost:string|null;massPerPortion:string|null;
  ingredients:{position:number;name:string;quantity:string;unit:string}[];
+ ingredientAvailability?:{foodId:string;name:string;unit:string;required:string;available:string;missing:string}[];
  missing:{name:string;quantity:string;unit:string}[];
  issues:{code:string;message:string}[];warnings:string[];
 }

@@ -8,7 +8,7 @@ async function openEditor(page:Page) {
   await page.route('**/api/nutrition/energy?**', route=>route.fulfill({json:{ok:true,data:{
     date:new URL(route.request().url()).searchParams.get('date'),status:'unavailable',totalCalories:null
   }}}));
-  await page.goto('/#nutrition-inventory');
+  await page.goto('/#nutrition-catalog');
   const editor=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Nova namirnica$/})});
   await editor.locator(':scope > summary').click();
   await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy','false');
@@ -109,4 +109,52 @@ test('USDA delayed detail is discarded after form closes',async({page})=>{
   release();
   await expect(editor.getByRole('button',{name:'Primijeni u obrazac'})).toHaveCount(0);
   await expect(editor.getByLabel('Energija · kcal na 100 g')).toHaveValue('');
+});
+
+
+test('USDA name is entered once and a confirmed receipt adds exactly 500 g', async ({page,request}, info) => {
+  await page.setViewportSize({width:390,height:844});
+  await mockDashboardApi(page);
+  await page.route('**/api/nutrition/energy?**',r=>r.fulfill({json:{ok:true,data:{
+    date:new URL(r.request().url()).searchParams.get('date'),status:'unavailable',totalCalories:null
+  }}}));
+  const {hit,draft}=fixture();
+  const name='Zobene pahuljice '+hit.sourceId;
+  const lots=async()=>{
+    const response=await request.get('/api/nutrition/inventory');
+    expect(response.ok()).toBeTruthy();
+    return (await response.json()).data.filter((lot:{name:string})=>lot.name===name);
+  };
+  await page.route('**/api/nutrition/food-search?**',r=>r.fulfill({json:{ok:true,data:[hit]}}));
+  await page.route('**/api/nutrition/food-imports/*/preview',r=>r.fulfill({json:{ok:true,data:draft}}));
+  await page.goto('/#nutrition-inventory');
+  const trigger=page.getByRole('button',{name:'Zaprimi namirnicu'});
+  await trigger.click();
+  const receipt=page.getByRole('dialog',{name:'Prijem namirnica'});
+  await receipt.getByLabel('Pronađi namirnicu').fill(name);
+  await receipt.getByRole('combobox',{name:'Lokacija'}).selectOption('fridge');
+  await receipt.getByRole('button',{name:'Nova namirnica'}).click();
+  const editor=page.getByRole('dialog',{name:'Nova namirnica'});
+  await expect(editor.getByLabel('Naziv',{exact:true})).toHaveValue(name);
+  await editor.getByLabel('Upit za USDA').fill('rolled oats');
+  await editor.getByRole('button',{name:'Pretraži USDA',exact:true}).click();
+  await editor.getByRole('button',{name:'Pregledaj '+hit.name}).click();
+  await editor.getByRole('button',{name:'Primijeni u obrazac'}).click();
+  await expect(editor.getByLabel('Energija · kcal na 100 g')).toHaveValue('300');
+  await editor.getByRole('button',{name:'Spremi',exact:true}).click();
+  await expect(receipt.getByRole('combobox',{name:'Namirnica',exact:true}).locator('option:checked')).toHaveText(name+' · g');
+  await expect(receipt.getByRole('combobox',{name:'Lokacija'})).toHaveValue('fridge');
+  expect(await lots()).toHaveLength(0);
+
+  const amount=receipt.getByLabel('Količina za prijem · g');
+  await expect(amount).toBeFocused();
+  await amount.fill('500');
+  await receipt.screenshot({path:info.outputPath('primitak-500g.png')});
+  let calls=0;
+  await page.route('**/api/nutrition/inventory/receipts',route=>{ calls++; return route.continue(); });
+  await receipt.locator('form').evaluate((form:HTMLFormElement)=>{form.requestSubmit();form.requestSubmit();});
+  await expect(receipt).toBeHidden();
+  await expect(trigger).toBeFocused();
+  expect(calls).toBe(1);
+  expect(await lots()).toMatchObject([{quantity:'500',unit:'g',location:'fridge'}]);
 });

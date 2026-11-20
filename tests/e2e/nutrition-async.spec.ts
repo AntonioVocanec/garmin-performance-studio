@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { mockDashboardApi } from './fixtures';
+import { mockDashboardApi, openNutritionSection } from './fixtures';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -39,8 +39,8 @@ async function defer(page: Page, pattern: string, reply: (route: Route) => Promi
 }
 
 async function navigateAwayAndBack(page: Page, section: string) {
-  await page.locator('.quick-nav a[href="#nutrition-overview"]').click();
-  await page.locator(`.quick-nav a[href="#nutrition-${section}"]`).click();
+  await openNutritionSection(page, 'overview');
+  await openNutritionSection(page, section);
 }
 
 for (const change of ['date', 'date-return', 'portions', 'recipe', 'optional', 'mass', 'location', 'expiry', 'navigation', 'unchanged']) {
@@ -101,7 +101,7 @@ for (const change of ['date', 'portions', 'navigation']) {
 }
 
 test('USDA ignores results for an edited query', async ({ page }) => {
-  await setup(page, 'inventory');
+  await setup(page, 'catalog');
   await page.locator('.nutrition summary').filter({ hasText: 'Provjereni nutritivni izvori' }).click();
   await page.getByRole('button', {name:'Otvori USDA pretragu u obrascu'}).click();
   await page.getByLabel('Upit za USDA').fill('apple');
@@ -118,7 +118,7 @@ test('USDA ignores results for an edited query', async ({ page }) => {
 
 for (const stage of ['preview', 'generate']) {
   test('AI ignores delayed ' + stage + ' after changing selected lots', async ({ page }) => {
-    await setup(page, 'inventory');
+    await setup(page, 'ai-recipes');
     const assistant = page.locator('.nutrition article').filter({ has: page.getByRole('heading', { name: 'AI Recipe Assistant' }) });
     await assistant.getByRole('checkbox', { name: /Testni lot a/ }).check();
     const previewData = { previewId: 'synthetic-preview', items: [{ name: 'STARI AI PREGLED', quantity: '100', unit: 'g' }], staticInstructions: 'Testne upute' };
@@ -157,7 +157,7 @@ for (const [name, data] of Object.entries({ absent: [{}], invalid: [{ ...validIt
 })) {
   test('shopping rejects malformed response ' + name, async ({ page }) => {
     await setup(page, 'shopping');
-    await page.route('**/api/nutrition/shopping/preview', route => route.fulfill({ json: { ok: true, data } }));
+    await page.route('**/api/nutrition/shopping/preview?includeToken=true', route => route.fulfill({ json: { ok: true, data: { items:data, token:'a'.repeat(64) } } }));
     await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();
     await expect(page.locator('.nutrition [role="alert"]')).toContainText('Podaci pregleda kupovine nisu valjani');
     await expect(page.getByRole('button', { name: /Spremi novu listu|Izradi praznu listu/ })).toHaveCount(0);
@@ -167,8 +167,8 @@ for (const [name, data] of Object.entries({ absent: [{}], invalid: [{ ...validIt
 
 test('shopping preserves positive decimals and removes only real zeros', async ({ page }) => {
   await setup(page, 'shopping');
-  await page.route('**/api/nutrition/shopping/preview', route => route.fulfill({ json: { ok: true,
-    data: [validItem, { ...validItem, name: 'Decimalna količina', quantity: '0.001' }] } }));
+  await page.route('**/api/nutrition/shopping/preview?includeToken=true', route => route.fulfill({ json: { ok: true,
+    data: { items:[validItem, { ...validItem, name: 'Decimalna količina', quantity: '0.001' }], token:'a'.repeat(64) } } }));
   await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();
   await expect(page.locator('.nutrition')).toContainText('Decimalna količina: nedostaje 0.001 g');
   await expect(page.locator('.nutrition')).not.toContainText('Testna kupovina: nedostaje');
@@ -184,9 +184,9 @@ test('accepted scaling is cleared on a date change and invalid shopping clears a
   await expect(card).toContainText('777 porcija');
   await chooseDate(page, '2019-02-05');
   await expect(card).not.toContainText('777 porcija');
-  await page.locator('.quick-nav a[href="#nutrition-shopping"]').click();
+  await openNutritionSection(page, 'shopping');
   let data: unknown = [{ ...validItem, quantity: 12 }];
-  await page.route('**/api/nutrition/shopping/preview', route => route.fulfill({ json: { ok: true, data } }));
+  await page.route('**/api/nutrition/shopping/preview?includeToken=true', route => route.fulfill({ json: { ok: true, data: { items:data, token:'a'.repeat(64) } } }));
   await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();
   await expect(page.getByRole('button', { name: 'Spremi novu listu' })).toBeVisible();
   data = [{ ...validItem, quantity: 'bad' }];
@@ -196,7 +196,7 @@ test('accepted scaling is cleared on a date change and invalid shopping clears a
 });
 
 test('an already received AI recipe stays available when navigating away and back', async ({ page }) => {
-  await setup(page, 'inventory');
+  await setup(page, 'ai-recipes');
   await page.route('**/api/nutrition/ai/preview', route => route.fulfill({ json: { ok: true,
     data: { previewId: 'accepted-preview', items: [], staticInstructions: 'Testne upute' } } }));
   await page.route('**/api/nutrition/ai/generate', route => route.fulfill({ json: { ok: true,
@@ -207,12 +207,12 @@ test('an already received AI recipe stays available when navigating away and bac
   await assistant.getByRole('checkbox', { name: /Potvrđujem slanje/ }).check();
   await assistant.getByRole('button', { name: 'Generiraj recepte' }).click();
   await expect(assistant).toContainText('Primljeni recept');
-  await navigateAwayAndBack(page, 'inventory');
+  await navigateAwayAndBack(page, 'ai-recipes');
   await expect(assistant).toContainText('Primljeni recept');
 });
 
 test('AI failure requires a refreshed preview and fresh confirmation', async ({ page }) => {
-  await setup(page, 'inventory');
+  await setup(page, 'ai-recipes');
   const panel = page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'AI Recipe Assistant'})});
   let previews=0, generations=0;
   await page.route('**/api/nutrition/ai/preview', route=>route.fulfill({json:{ok:true,data:{

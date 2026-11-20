@@ -1,3 +1,5 @@
+import { nutritionGroups, nutritionGroupFor, nutritionSectionIds } from "./nutritionViews";
+
 type ViewId = "overview" | "performance" | "nutrition" | "lab";
 
 const scrollBehavior = (): ScrollBehavior => window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
@@ -40,7 +42,7 @@ const views: Array<{
   {
     id: "nutrition", label: "Prehrana", title: "Prehrana i oporavak",
     description: "Dnevni unos, nutritivni ciljevi i planiranje obroka.",
-    links: [{id:"nutrition-overview",label:"Pregled"},{id:"nutrition-diary",label:"Dnevnik"},{id:"nutrition-planner",label:"Planer"},{id:"nutrition-recipes",label:"Recepti"},{id:"nutrition-prep",label:"Meal Prep"},{id:"nutrition-inventory",label:"Zalihe"},{id:"nutrition-shopping",label:"Kupovina"}],
+    links: nutritionGroups.map(({ primary, label }) => ({ id: primary.id, label })),
   },
   {
     id: "lab",
@@ -71,7 +73,7 @@ const sectionIds: Record<string, string> = {
 };
 
 const sectionViews: Record<string, ViewId> = {
-  "nutrition-overview":"nutrition", "nutrition-diary":"nutrition", "nutrition-planner":"nutrition", "nutrition-recipes":"nutrition", "nutrition-prep":"nutrition", "nutrition-inventory":"nutrition", "nutrition-shopping":"nutrition",
+  ...Object.fromEntries(nutritionSectionIds.map(id => [id, "nutrition" as const])),
   "health-overview": "overview",
   "daily-summary": "overview",
   "activity-goals": "overview",
@@ -147,7 +149,7 @@ export function initializeDashboardViews(): void {
     const heading = document.createElement("header");
     heading.className = "dashboard-view-heading";
     heading.innerHTML = `<div><span class="eyebrow">${String(index + 1).padStart(2, "0")} / ${view.label}</span><h2>${view.title}</h2><p>${view.description}</p></div>`;
-    panel.append(heading);
+    if (view.id !== "nutrition") panel.append(heading);
     panels.set(view.id, panel);
   }
 
@@ -432,7 +434,8 @@ export function initializeDashboardViews(): void {
       const anchor = document.createElement("a");
       anchor.href = `#${link.id}`;
       anchor.dataset.dashboardView = view.id;
-      anchor.innerHTML = `<span class="quick-nav-index">${String(index + 1).padStart(2, "0")}</span>${link.label}`;
+      if (view.id === "nutrition") anchor.textContent = link.label;
+      else anchor.innerHTML = `<span class="quick-nav-index">${String(index + 1).padStart(2, "0")}</span>${link.label}`;
       quickNavLinks.append(anchor);
     });
   }
@@ -459,10 +462,17 @@ export function initializeDashboardViews(): void {
     return match ? match[1] as ViewId : null;
   };
   const setCurrentSection = (targetId: string | null) => {
+    const nutritionActive = targetId ? sectionViews[targetId] === "nutrition" : location.hash === "#view-nutrition";
+    const currentId = nutritionActive ? nutritionGroupFor(targetId ?? "").primary.id : targetId;
     for (const anchor of quickNavLinks.querySelectorAll<HTMLAnchorElement>("a[data-dashboard-view]")) {
-      if (targetId && anchor.hash === `#${encodeURIComponent(targetId)}`) anchor.setAttribute("aria-current", "location");
-      else anchor.removeAttribute("aria-current");
-      if (targetId && anchor.hash === `#${encodeURIComponent(targetId)}`) quickNavLinks.scrollTo({left:Math.max(0,quickNavLinks.scrollLeft+anchor.getBoundingClientRect().left-quickNavLinks.getBoundingClientRect().left-(quickNavLinks.clientWidth-anchor.clientWidth)/2),behavior:scrollBehavior()});
+      if (currentId && anchor.hash === `#${encodeURIComponent(currentId)}`) {
+        anchor.setAttribute("aria-current", "location");
+        quickNavLinks.scrollTo({
+          left: Math.max(0, quickNavLinks.scrollLeft + anchor.getBoundingClientRect().left
+            - quickNavLinks.getBoundingClientRect().left - (quickNavLinks.clientWidth - anchor.clientWidth) / 2),
+          behavior: scrollBehavior(),
+        });
+      } else anchor.removeAttribute("aria-current");
     }
   };
   window.addEventListener("resize",()=>requestAnimationFrame(()=>{const current=quickNavLinks.querySelector<HTMLAnchorElement>('a[aria-current="location"]');if(current)setCurrentSection(decodeURIComponent(current.hash.slice(1)))}));

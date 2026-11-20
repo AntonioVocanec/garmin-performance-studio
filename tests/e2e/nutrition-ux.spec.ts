@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { mockDashboardApi } from './fixtures';
+import { mockDashboardApi, openNutritionSection } from './fixtures';
 
 async function setup(page: Page, section = 'overview') {
   await mockDashboardApi(page);
@@ -11,7 +11,7 @@ async function setup(page: Page, section = 'overview') {
 }
 
 async function go(page: Page, section: string) {
-  await page.locator(`.quick-nav a[href="#nutrition-${section}"]`).click();
+  await openNutritionSection(page, section);
   await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy', 'false');
 }
 
@@ -39,7 +39,7 @@ test.describe('Nutrition chart day coverage', () => {
         // The same day has two series; a third day has only expenditure.
         history: scenario.name === 'partial' ? [{ date: dates[1], totalCalories: 2000 }, { date: dates[5], totalCalories: 2500 }] : [],
       } } }));
-      await page.goto('/#nutrition-overview');
+      await page.goto('/#nutrition-trends');
       const chart = page.locator('#nutrition-energy-chart');
       const inspector = page.locator('details[data-chart-inspector-for="nutrition-energy-chart"]');
       await expect(inspector.locator('summary')).toHaveText('Unos i potrošnja · ' + scenario.expected);
@@ -75,7 +75,7 @@ test.describe('Nutrition chart day coverage', () => {
     let rows: unknown[] = dates.map(missingDay);
     await page.route('**/api/nutrition/analytics?**', route => route.fulfill({ json: { ok: true, data: rows } }));
     await page.route('**/api/nutrition/energy**', route => route.fulfill({ json: { ok: true, data: { date: new URL(route.request().url()).searchParams.get('date'), totalCalories: null, history: [] } } }));
-    await page.goto('/#nutrition-overview');
+    await page.goto('/#nutrition-trends');
     const summary = page.locator('details[data-chart-inspector-for="nutrition-energy-chart"] > summary');
     await expect(summary).toContainText('7 dana · bez dostupnih vrijednosti');
     rows = dates.map(date => ({ ...missingDay(date), nutrients: { ...missingDay(date).nutrients, kcal: '0' } }));
@@ -84,7 +84,7 @@ test.describe('Nutrition chart day coverage', () => {
     await expect(summary).toContainText('svi dani imaju dostupne vrijednosti');
     await go(page, 'diary');
     rows = [];
-    await go(page, 'overview');
+    await go(page, 'trends');
     await expect(summary).toContainText('Nema dana za prikaz');
   });
 
@@ -99,7 +99,7 @@ test.describe('Nutrition chart day coverage', () => {
     await page.route('**/api/nutrition/energy**', route => route.fulfill({ json: { ok: true, data: {
       date: new URL(route.request().url()).searchParams.get('date'), history: [{ date: dates[0], totalCalories: 0 }], totalCalories: null,
     } } }));
-    await page.goto('/#nutrition-overview');
+    await page.goto('/#nutrition-trends');
     for (const id of ['nutrition-energy-chart', 'nutrition-macro-chart', 'nutrition-balance-chart']) {
       const inspector = page.locator(`details[data-chart-inspector-for="${id}"]`);
       await expect(inspector.locator('summary')).toContainText('7 dana · 1 dan s vrijednostima');
@@ -120,23 +120,23 @@ test('nutrition notices stay in their action context including late success and 
   await go(page, 'overview');
   await expect(page.locator('.nutrition [role="status"]')).toHaveCount(0);
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Kupovina iz tjednog plana' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Manjkovi za odabrano razdoblje' })).toBeVisible();
   for (const status of [200, 422]) {
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
-    await page.route('**/api/nutrition/shopping/preview', async route => {
+    await page.route('**/api/nutrition/shopping/preview?includeToken=true', async route => {
       await gate;
-      await route.fulfill({ status, json: status === 200 ? { ok: true, data: [] } : { detail: 'Testna pogreška kupovine' } });
+      await route.fulfill({ status, json: status === 200 ? { ok: true, data: { items:[], token:'a'.repeat(64) } } : { detail: 'Testna pogreška kupovine' } });
     });
-    const sent = page.waitForRequest('**/api/nutrition/shopping/preview');
+    const sent = page.waitForRequest('**/api/nutrition/shopping/preview?includeToken=true');
     await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();
     await sent;
-    await page.locator('.quick-nav a[href="#nutrition-overview"]').click();
+    await openNutritionSection(page, 'overview');
     release();
     await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy', 'false');
     await expect(page.locator('.nutrition [role="status"], .nutrition [role="alert"]')).toHaveCount(0);
     await go(page, 'shopping');
-    await page.unroute('**/api/nutrition/shopping/preview');
+    await page.unroute('**/api/nutrition/shopping/preview?includeToken=true');
   }
   await page.getByRole('button', { name: 'Izračunaj manjkove' }).click();
   await expect(page.getByRole('status')).toBeVisible();
@@ -159,7 +159,7 @@ test('nutrition chart descriptions and tables preserve missing values and zero i
       { date: '2026-10-31', totalCalories: 2000 },
     ],
   } } }));
-  await page.goto('/#nutrition-overview');
+  await page.goto('/#nutrition-trends');
   const chart = page.locator('#nutrition-energy-chart');
   await expect(chart.locator('canvas')).toBeVisible();
   await expect(chart).toHaveAttribute('aria-label', /Unos i potrošnja.*nema podatka.*0 kcal/);
@@ -212,7 +212,7 @@ test('nutrition empty shopping explains manual lists and clears stale dated prev
 
 test('nutrition complete user flow creates food receipt recipe plan batch diary and shopping on mobile', async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await setup(page, 'inventory');
+  await setup(page, 'catalog');
   await page.locator('#date').fill('2018-05-07');
   await page.locator('#date').press('Tab');
   const name = 'UX namirnica ' + crypto.randomUUID();
@@ -227,7 +227,9 @@ test('nutrition complete user flow creates food receipt recipe plan batch diary 
   }
   await editor.getByLabel('Definicija ugljikohidrata').selectOption('eu_available');
   await editor.getByRole('button', { name: 'Spremi', exact: true }).click();
-  const receipt = page.locator('.nutrition article').filter({ has: page.getByRole('heading', { name: 'Prijem namirnica' }) });
+  await go(page, 'inventory');
+  await page.getByRole('button',{name:'Zaprimi namirnicu'}).click();
+  const receipt = page.getByRole('dialog', { name: 'Prijem namirnica' });
   await expect(receipt.getByRole('combobox', { name: 'Namirnica', exact: true })).toContainText(name);
   await receipt.getByRole('combobox', { name: 'Namirnica', exact: true }).selectOption({ label: name + ' · g' });
   await receipt.getByLabel('Količina za prijem · g', { exact: true }).fill('200');
@@ -243,6 +245,7 @@ test('nutrition complete user flow creates food receipt recipe plan batch diary 
   const inventory = async () => (await (await request.get('/api/nutrition/inventory')).json()).data;
   const raw = (await inventory()).find((lot: { name: string }) => lot.name === name);
   expect(raw.quantity).toBe('200');
+  await go(page, 'catalog');
   await page.locator('.nutrition summary').filter({ hasText: /^Katalog namirnica/ }).click();
   await page.locator('.nutrition-row').filter({ hasText: name }).getByRole('button', { name: 'Uredi', exact: true }).click();
   const edit = page.locator('.nutrition details').filter({ has: page.locator('summary').filter({ hasText: /^Uredi namirnicu$/ }) });
@@ -261,6 +264,7 @@ test('nutrition complete user flow creates food receipt recipe plan batch diary 
   await page.getByRole('button', { name: 'Spremi', exact: true }).click();
   await expect(page.locator('.nutrition article').filter({ has: page.getByRole('heading', { name: recipeName, exact: true }) })).toContainText('200 kcal');
   await go(page, 'planner');
+  await page.getByRole('button', { name: 'Planiraj obrok' }).click();
   await page.getByRole('combobox', { name: 'Recept', exact: true }).selectOption({ label: recipeName });
   await page.getByLabel('Porcije', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Dodaj u plan' }).click();
@@ -280,7 +284,8 @@ test('nutrition complete user flow creates food receipt recipe plan batch diary 
   expect(lots.find((l: { id: string }) => l.id === raw.id).quantity).toBe('100');
   const portion = lots.find((l: { name: string }) => l.name === recipeName);
   expect(portion.quantity).toBe('2');
-  await page.locator('.nutrition article').filter({ has: page.getByRole('heading', { name: recipeName, exact: true }) }).getByRole('button', { name: 'Zabilježi konzumaciju' }).click();
+  await page.getByRole('link', { name: 'Otvori gotove porcije' }).click();
+  await page.locator('.nutrition article').filter({ has: page.getByRole('heading', { name: recipeName, exact: true }) }).getByRole('link', { name: 'Zabilježi konzumaciju' }).click();
   await page.getByLabel(/Količina ·/).fill('0.5');
   await page.getByRole('button', { name: 'Potvrdi unos' }).click();
   await expect(page.getByRole('status')).toContainText('Obrok je zabilježen');
@@ -289,6 +294,7 @@ test('nutrition complete user flow creates food receipt recipe plan batch diary 
   const diary = (await (await request.get('/api/nutrition/diary?date=2018-05-07')).json()).data;
   expect(diary.entries.find((e: { name: string }) => e.name === recipeName).nutrients.kcal).toBe('100');
   await go(page, 'planner');
+  await page.getByRole('button', { name: 'Planiraj obrok' }).click();
   await page.getByRole('combobox', { name: 'Recept', exact: true }).selectOption({ label: recipeName });
   await page.getByLabel('Porcije', { exact: true }).fill('6');
   await page.getByRole('button', { name: 'Dodaj u plan' }).click();

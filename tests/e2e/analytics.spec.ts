@@ -29,6 +29,7 @@ test('nutrition training context explains incomplete days without inventing grou
  await mockDashboardApi(page);
  await page.route('**/api/analytics/nutrition-training?**',r=>r.fulfill({json:{ok:true,rows:[{date:'2026-11-01',load:null,kcal:null,carbs:null,complete:false,carbComparison:'unavailable',nextDate:'2026-11-02',nextHrv:null,nextSleep:null,nextRestingHeartRate:null,exclusions:['Dnevnik nije potvrđen kao potpun.']}],groups:[],eligibleDays:0,thresholds:{lowerMax:null,higherAbove:null},sufficient:false,note:'Opisna usporedba; povezanost nije dokaz uzroka.'}}));
  await page.goto('/');await page.getByRole('tab',{name:'Prehrana',exact:true}).click();
+ await page.getByRole('link',{name:'Trendovi',exact:true}).click();
  await page.locator('#nutrition-training-context > summary').click();await expect(page.locator('#nutrition-training-context')).toContainText('Dnevnik nije potvrđen kao potpun.');await expect(page.locator('#nutrition-training-context')).toContainText('najmanje 5');
 });
 

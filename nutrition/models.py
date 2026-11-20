@@ -187,6 +187,10 @@ class ShoppingBuild(Input):
     name: str = Field('Tjedna kupovina', min_length=1, max_length=100)
 
 
+class ShoppingCreate(ShoppingBuild):
+    previewToken: str | None = Field(None, pattern=r'^[a-f0-9]{64}$')
+
+
 class ShoppingEdit(Input):
     quantity: Number
     packageSize: Positive | None = None

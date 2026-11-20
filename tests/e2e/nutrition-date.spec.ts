@@ -43,7 +43,7 @@ async function setup(page: Page) {
       activeCalories: null, restingCalories: null, localEstimate: null, history: [],
     } } });
   });
-  await page.goto('/#nutrition-overview');
+  await page.goto('/#nutrition-trends');
   await expect(balance(page)).toHaveText(/[-−]300 kcal/);
   return { calls, holds, totals, responseDates, diaryDates };
 }
@@ -66,6 +66,7 @@ test('energy and diary follow the date selected outside Nutrition without flashi
   state.holds.set(B, paused);
   try {
     await page.getByRole('tab', {name:'Prehrana', exact:true}).click();
+    await page.locator('.nutrition-subnav a[href="#nutrition-trends"]').click();
     await expect(balance(page)).toHaveText(/— kcal/);
     await expect(card(page).locator('strong')).toHaveText(/— kcal/);
   } finally { paused.open(); }
@@ -98,6 +99,7 @@ test('rapid date changes ignore late responses and preserve a real zero', async 
   await expect(card(page)).toContainText(C);
   await page.getByRole('tab',{name:'Pregled',exact:true}).click();
   await page.getByRole('tab',{name:'Prehrana',exact:true}).click();
+  await page.locator('.nutrition-subnav a[href="#nutrition-trends"]').click();
   await expect(balance(page)).toHaveText(/: 2\.000 kcal$/);
 });
 

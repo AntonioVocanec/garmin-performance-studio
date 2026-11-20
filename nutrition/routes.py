@@ -8,7 +8,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from . import models as m
-from .repository import DomainError, dumps, now, one, rows, uid
+from .repository import DomainError, digest, dumps, now, one, rows, uid
 from .engine import decimal, fixed, text
 from .service import NutritionService
 
@@ -87,6 +87,10 @@ def create_router(core):
 
     @router.get('/recipes', response_model=Response[list[m.RecipeResponse]])
     def recipes(): return read(lambda db:[service.recipe(db,r['id']) for r in rows(db,'SELECT id FROM nutrition_recipes WHERE archived=0 ORDER BY name')])
+
+    @router.get('/recipes/versions/{version_id}', response_model=Response[m.RecipeResponse])
+    def recipe_version(version_id: str):
+        return read(lambda db: service.recipe(db, version_id=version_id))
 
     @router.get('/recipes/{recipe_id}', response_model=Response[m.RecipeResponse])
     def recipe(recipe_id:str):return read(lambda db:service.recipe(db,recipe_id))
@@ -175,13 +179,24 @@ def create_router(core):
             return {'id':plan_id}
         return read(work)
 
+    def shopping_token(body, items):
+        return digest({'start': body.start, 'end': body.end,
+                       'items': sorted(items, key=lambda item: item['foodId'])})
+
     @router.post('/shopping/preview', response_model=Response)
-    def shopping_preview(body:m.ShoppingBuild):return read(lambda db:service.shopping(db,body.start,body.end))
+    def shopping_preview(body: m.ShoppingBuild, includeToken: bool = False):
+        def work(db):
+            items = service.shopping(db, body.start, body.end)
+            return {'items': items, 'token': shopping_token(body, items)} if includeToken else items
+        return read(work)
 
     @router.post('/shopping/lists', response_model=Response)
-    def shopping_create(body:m.ShoppingBuild,idempotency_key:Key):
+    def shopping_create(body:m.ShoppingCreate,idempotency_key:Key):
         def action(db,op):
-            items=service.shopping(db,body.start,body.end);list_id=uid()
+            items=service.shopping(db,body.start,body.end)
+            if body.previewToken is not None and body.previewToken != shopping_token(body, items):
+                raise DomainError('Manjkovi su se promijenili. Izračunaj ih ponovno prije spremanja.')
+            list_id=uid()
             db.execute('INSERT INTO nutrition_shopping_lists VALUES (?,?,?,1)',(list_id,body.name,now()))
             for item in items:
                 if Decimal(item['quantity'])<=0:continue
@@ -189,7 +204,7 @@ def create_router(core):
                 db.execute('INSERT INTO nutrition_shopping_items (id,list_id,food_id,required,quantity) VALUES (?,?,?,?,?)',(item_id,list_id,item['foodId'],fixed(item['required']),fixed(item['quantity'])))
                 for plan_id in item['planIds']:db.execute('INSERT INTO nutrition_shopping_sources VALUES (?,?)',(item_id,plan_id))
             return {'id':list_id}
-        return run(lambda:service.repo.operation('shopping',idempotency_key,body.model_dump(),action))
+        return run(lambda:service.repo.operation('shopping',idempotency_key,body.model_dump(exclude_none=True),action))
 
     @router.get('/shopping/lists', response_model=Response)
     def shopping_lists():

@@ -124,3 +124,31 @@ Razvojni popravak usklađuje OpenAI quantity i portions s lokalnom preciznošću
 ### Aktivacija AI količina · 16. 11. 2026.
 
 GPS-20261116-ai-quantity-schema-01 aktiviran uz odobrenje. PID 39976, port 8787. Python 125/125 i pnpm check prolaze. Zadržan prethodno verificirani frontend, potvrđeno 20/20 hashova. SQLite v12 i sadržaj svih 36 tablica provjereni, integritet i strane veze prolaze. Stvarni plaćeni AI poziv nije izvršen. Evidencija je u releases/GPS-20261116-ai-quantity-schema-01/local-activation.json.
+
+### Redizajn Prehrane · faze 0 i 1 · 20. 11. 2026.
+
+- [x] Snimljeno polazište na commitu `e62c1c8` uz izdvojenu SQLite bazu i testne namirnice. Primitak već katalogizirane namirnice zahtijeva tri radnje nakon otvaranja odjeljka. Od Zaliha do potvrđenog kuhanja šest je radnji, a od gotovih porcija do evidencije doručka tri. Snimljeni su prikazi primitka, pregleda kuhanja i unosa obroka pri širinama 390 i 1440 px.
+- [x] Uvedena četiri odredišta. Moj dan sadrži Pregled dana i Dnevnik, Kuhinja sadrži Recepte i Pripremu, a Zalihe sadrže Stanje zaliha i Kupovinu. Planer ima vlastito odredište. Provjereno je svih sedam postojećih poveznica, osvježavanje, povratak i naprijed u pregledniku te otvaranje odredišta tipkom Enter.
+- [x] Referentni tok prije i poslije navigacijske izmjene daje 500 g nakon primitka i pregleda kuhanja, 200 g i pet porcija nakon potvrde te 200 g, četiri porcije i jedan zapis nakon evidentiranja doručka. U fazi 1 prošlo je svih 56 Playwright scenarija za Prehranu.
+- [x] Faza 2 · objedinjeni Moj dan i Dnevnik. Evidentiraj obrok otvara zajednički obrazac bez pomicanja na 320, 390 i 1440 px. Obroci iz plana označeni su odvojeno od dnevničkih unosa. Trendovi i Profil i ciljevi imaju zasebne ulaze. Prečac s gotove porcije otvara obrazac s odabranom porcijom. Regresijski prolaz Prehrane, analitike i dashboarda završio je sa 100/100. Nakon završne dorade prikaza količine i razmaka ponovno je prošlo 6/6 scenarija redizajna, pnpm check i izdvojeni build.
+- [x] Faza 3 · Zalihe i Kupovina. Početni prikaz prikazuje fizičko stanje po roku. Katalog, Povijest i Kupovina dostupni su iz navigacije Zaliha. Dovršen je tok Zaprimi namirnicu → Nova namirnica → povratak u primitak s odabranim zapisom.
+- [x] Faza 4 · Planer, Recepti i Priprema. Planer prikazuje odabrani dan na mobitelu i svih sedam dana na računalu. Recept, kuhanje, gotove porcije i evidencija povezani su prečacima. AI recepti dostupni su u Kuhinji.
+- [ ] Faza 5 · Pristupačnost, završna regresija i predaja kandidata na neovisni pregled, uključujući stvarni čitač zaslona.
+
+Rad je započet prema sažetku razgovora Product Lab. Nakon što je izvorni plan postao dostupan u projektu, provjerene su faze 0 i 1 te je dovršen prvi MVP iz faze 2. Isporuka je u razvojnom kodu.
+
+
+#### Provjera faze 3
+
+- Na 390 px naziv je unesen jednom, USDA deklaracija ostala je na 100 g, a izvorna lokacija primitka sačuvana je pri povratku iz kataloga. Spremanje deklaracije stvorilo je nula stavki zalihe. Dvostruka potvrda poslala je jedan zahtjev i dodala točno 500 g.
+- Kupovina koristi isti odabrani raspon za pregled i spremanje. Poslužitelj u istoj transakciji provjerava odgovara li izračun potvrđenom pregledu. Promjena zalihe odbila je stari manjak od 100 g, a novi pregled spremio je 50 g. Oznaka Kupljeno ažurirala je samo listu. Primitak 75 g za istu stavku koristio je stvarnu količinu i odabrani datum.
+- Prošlo je 125 Python testova, pnpm check i izdvojeni build. U regresijskom prolazu prošlo je 60/61 Playwright scenarija za Prehranu. Scenarij za Kupovinu ponovljen je s odabirom polja datuma unutar pripadajuće stavke i prošao je u ciljanoj provjeri 4/4.
+- Isporuka je u razvojnom kodu. Za pregled USDA korišteni su simulirani odgovori.
+
+#### Provjera faze 4
+
+- Na 390 px prikazuje se jedan dan uz birač od sedam dana. Na 1440 px vidljiv je cijeli tjedan. Odabir dana ažurira zajednički datum. Provjereni su uređivanje, kopiranje, promjena statusa, prečac na Kupovinu s prvim i posljednjim danom tjedna te unos obroka iz spremljene verzije recepta.
+- Zakazivanje i pregled zadržavaju fizičku zalihu. Izračun raspoloživosti u pregledu grupira ponovljene sastojke i isključuje istekle lotove. Kuhanje ažurira zalihu tek pri potvrdi, a konzumacija gotove porcije smanjuje broj porcija i evidentira obrok.
+- Spremljena verzija recepta ostaje dostupna za ranije zakazanu pripremu i planirani obrok. Pristup verziji koristi novu rutu samo za čitanje. Ovaj dio ne zahtijeva migraciju baze.
+- Provjereni su pregled za slanje, privola, osvježavanje nakon neuspjeha i zadržavanje primljenih AI prijedloga u novom odredištu, sa simuliranim odgovorima.
+- Prošlo je 126/126 Python testova i 104/104 Playwright scenarija. Prošli su pnpm check, izdvojeni Vite build i git diff --check. Faza je dostupna u razvojnom kodu.

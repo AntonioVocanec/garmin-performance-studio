@@ -1,5 +1,5 @@
 import {expect,test} from '@playwright/test';
-import {mockDashboardApi} from './fixtures';
+import { mockDashboardApi, openNutritionSection } from './fixtures';
 
 test('nutrition AI budgets explain limits and save valid integers and cleared limits',async({page,request})=>{
  await mockDashboardApi(page);
@@ -84,11 +84,11 @@ test('nutrition distinguishes reported carbs from comparable EU targets and unkn
  const macros=page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'Makronutrijenti',exact:true})});
  await expect(macros).toContainText('60 / 200 g');
  await expect(macros).toContainText('procjena');
- await page.locator('.quick-nav a[href="#nutrition-diary"]').click();
+ await openNutritionSection(page, 'diary');
  await expect(page.locator('.nutrition')).toContainText('UH 70 g');
  const unknown=await call('/foods',{name:'Synthetic unknown '+crypto.randomUUID(),source:'Synthetic',nutrients:{carbs:5}});
  await call('/diary/entries',{date,meal:'snack',kind:'food',sourceId:unknown.id,quantity:100});
- await page.locator('.quick-nav a[href="#nutrition-overview"]').click();
+ await openNutritionSection(page, 'overview');
  await expect(macros).toContainText('— / 200 g');
  await expect(macros).toContainText('definicija ili podaci nisu potvrđeni');
 });
@@ -113,9 +113,11 @@ test('nutrition preserves Garmin navigation and completes local inventory cookin
  await page.getByRole('button',{name:'Provjeri pripremu',exact:true}).click();
  await expect(page.getByRole('button',{name:'Potvrdi kuhanje i potrošnju sastojaka',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Potvrdi kuhanje i potrošnju sastojaka',exact:true}).click();
- await expect(page.getByRole('button',{name:'Zabilježi konzumaciju',exact:true}).last()).toBeVisible();
+ await page.getByRole('link',{name:'Otvori gotove porcije'}).click();
+ await expect(page.getByRole('link',{name:'Zabilježi konzumaciju',exact:true}).last()).toBeVisible();
  const lotResponse=await request.get('/api/nutrition/inventory');const lot=(await lotResponse.json()).data.find((l:{name:string})=>l.name===recipe.name);
- await page.locator('.quick-nav a[href="#nutrition-diary"]').click();
+ await openNutritionSection(page, 'diary');
+ await page.getByRole('button',{name:'Evidentiraj obrok'}).click();
  await page.getByRole('combobox',{name:'Vrsta',exact:true}).selectOption('portion');
  await page.getByRole('combobox',{name:'Odaberi',exact:true}).selectOption(lot.id);
  await page.getByLabel(/Količina ·/).fill('0.5');
@@ -124,7 +126,7 @@ test('nutrition preserves Garmin navigation and completes local inventory cookin
  const diary=await request.get('/api/nutrition/diary?date='+selectedDate);const entries=(await diary.json()).data.entries;
  expect(entries.some((e:{name:string;nutrients:{kcal:string}})=>e.name===recipe.name&&Number(e.nutrients.kcal)===100)).toBeTruthy();
  const dimensions=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:document.documentElement.clientWidth}));expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width+1);
- await page.locator('.quick-nav a[href="#nutrition-recipes"]').click();await expect(page.getByRole('heading',{name:'Recepti',exact:true})).toBeVisible();
+ await openNutritionSection(page, 'recipes');await expect(page.getByRole('heading',{name:'Recepti',exact:true})).toBeVisible();
  await page.goBack();await expect(page.getByRole('heading',{name:'Dnevnik prehrane',exact:true})).toBeVisible();
  await page.getByRole('tab',{name:'Pregled',exact:true}).click();await expect(page.locator('#today-energy')).toHaveText('70');
  expect(errors).toEqual([]);
@@ -152,9 +154,9 @@ test('nutrition profile starts configurable and shopping receipt is idempotent i
  const key=crypto.randomUUID(),body={itemId:item.id,quantity:'200',location:'freezer',expiresOn:'2099-12-01',cost:'4.20',expectedVersion:item.version};
  const first=await call('/shopping/receive',body,key),second=await call('/shopping/receive',body,key);expect(second).toEqual(first);
  const stock=await request.get('/api/nutrition/inventory');expect((await stock.json()).data.filter((l:{food_id:string})=>l.food_id===food.id)).toHaveLength(1);
- await page.locator('.quick-nav a[href="#nutrition-shopping"]').click();await expect(page.locator('.nutrition')).toContainText(food.name);
+ await openNutritionSection(page, 'shopping');await expect(page.locator('.nutrition')).toContainText(food.name);
  await page.setViewportSize({width:360,height:800});
- const selected=page.locator('.quick-nav a[href="#nutrition-shopping"]');await expect(selected).toHaveAttribute('aria-current','location');
+ const selected=page.locator('.nutrition-subnav a[href="#nutrition-shopping"]');await expect(selected).toHaveAttribute('aria-current','page');
  await expect.poll(()=>selected.evaluate(a=>{const p=a.parentElement!.getBoundingClientRect(),r=a.getBoundingClientRect();return r.left>=p.left-1&&r.right<=p.right+1})).toBeTruthy();
  const bounds=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:document.documentElement.clientWidth}));expect(bounds.scroll).toBeLessThanOrEqual(bounds.width+1);
  await page.screenshot({path:'tmp/nutrition-shopping-mobile.png',fullPage:false});
@@ -162,15 +164,15 @@ test('nutrition profile starts configurable and shopping receipt is idempotent i
 
 test('nutrition catalogue and recipe editor create real local records without external providers',async({page})=>{
  await mockDashboardApi(page);await page.route('**/api/nutrition/energy**',r=>r.fulfill({json:{ok:true,data:{status:'unavailable',history:[]}}}));
- await page.goto('/#nutrition-inventory');
+ await page.goto('/#nutrition-catalog');
  const name='Synthetic manual '+crypto.randomUUID();
  await page.locator('.nutrition summary').filter({hasText:'Nova namirnica'}).click();
  await page.getByRole('textbox',{name:'Naziv',exact:true}).fill(name);
  await page.getByRole('textbox',{name:'Izvor podataka',exact:true}).fill('Synthetic label');
  await page.getByRole('textbox',{name:'Energija · kcal na 100 g',exact:true}).fill('100');
  await page.getByRole('button',{name:'Spremi',exact:true}).click();
- await expect(page.getByRole('combobox',{name:'Namirnica',exact:true})).toContainText(name);
- await page.locator('.quick-nav a[href="#nutrition-recipes"]').click();
+ await expect(page.locator('.nutrition')).toContainText(name);
+ await openNutritionSection(page, 'recipes');
  await page.locator('.nutrition summary').filter({hasText:'Novi recept'}).click();
  const recipeName='Synthetic edited '+crypto.randomUUID();
  await page.getByRole('textbox',{name:'Naziv',exact:true}).fill(recipeName);

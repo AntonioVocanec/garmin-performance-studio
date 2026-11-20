@@ -58,7 +58,7 @@ def cooking_plan(service, db, data):
     if not ingredients:
         issues.append({'code':'no_ingredients', 'message':'Odaberi barem jedan sastojak s podržanom količinom.'})
 
-    allocations, missing, inventory = [], [], []
+    allocations, missing, inventory, availability = [], [], [], []
     cost = Decimal(0)
     cost_complete = True
     for food_id, required in needs.items():
@@ -75,8 +75,12 @@ def cooking_plan(service, db, data):
                 cost_complete = False
             else:
                 cost += decimal(lot['cost'], 10000) * Decimal(take) / lot['initial_quantity']
+        item = next(i for i in ingredients if i['foodId'] == food_id)
+        availability.append({'foodId':food_id, 'name':item['name'], 'unit':item['unit'],
+                             'required':text(decimal(required)),
+                             'available':text(decimal(sum(lot['quantity'] for lot in candidates))),
+                             'missing':text(decimal(remaining))})
         if remaining:
-            item = next(i for i in ingredients if i['foodId'] == food_id)
             missing.append({'foodId':food_id, 'name':item['name'], 'unit':item['unit'], 'quantity':text(decimal(remaining))})
     if missing:
         issues.append({'code':'missing_ingredients', 'message':'Nedostaju sastojci za odabranu pripremu.'})
@@ -92,4 +96,5 @@ def cooking_plan(service, db, data):
     result['costPerPortion'] = text(cost/portions) if result['cost'] is not None else None
     result['previewToken'] = digest({'request':{k:v for k,v in data.items() if k != 'previewToken'},
                                      'plan':result, 'inventory':inventory, 'schedule':schedule})
+    result['ingredientAvailability'] = availability
     return result

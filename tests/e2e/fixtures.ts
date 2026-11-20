@@ -642,3 +642,15 @@ export async function mockDashboardApi(page: import("@playwright/test").Page, op
 
   return { dashboardDates, journalWrites, lifeEventWrites, activityRpeWrites, ecgDetailRequests, bloodLabWrites, bloodLabUploads, bloodLabReports };
 }
+
+
+export async function openNutritionSection(page: Page, section: string) {
+  const parent = ({ diary: "overview", trends: "overview", prep: "recipes", portions: "recipes", "ai-recipes": "recipes", shopping: "inventory", catalog: "inventory", "inventory-history": "inventory" } as Record<string, string>)[section];
+  if (parent) {
+    const primary = page.locator(`.quick-nav a[href="#nutrition-${parent}"]`);
+    if (await primary.getAttribute("aria-current") !== "location") await primary.click();
+    await page.locator(`.nutrition-subnav a[href="#nutrition-${section}"]`).click();
+  } else {
+    await page.locator(`.quick-nav a[href="#nutrition-${section}"]`).click();
+  }
+}

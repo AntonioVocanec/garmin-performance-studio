@@ -1,14 +1,17 @@
 <script lang="ts">
+ import { onDestroy } from 'svelte';
  import UsdaFoodPicker from './UsdaFoodPicker.svelte';
  import {DashboardApiError} from '../lib/api';
  import {nutritionApi,type Food,type Recipe,type UsdaDraft} from '../lib/nutritionApi';
- let {mode,foods,onchange,recipe=null,food=null,showLookup=false,onexisting,onrefresh}:{mode:'food'|'recipe';foods:Food[];onchange:()=>Promise<void>;recipe?:Recipe|null;food?:Food|null;showLookup?:boolean;onexisting?:(f:Food)=>void;onrefresh?:()=>Promise<void>}=$props();
+ let {mode,foods,onchange,recipe=null,food=null,showLookup=false,initialName='',saving=$bindable(false),onexisting,onrefresh}:{mode:'food'|'recipe';foods:Food[];onchange:(savedFood?:Food)=>Promise<void>;recipe?:Recipe|null;food?:Food|null;showLookup?:boolean;initialName?:string;saving?:boolean;onexisting?:(f:Food)=>void;onrefresh?:()=>Promise<void>}=$props();
+ let destroyed=false;
+ onDestroy(()=>{destroyed=true});
  let name=$state(''),source=$state(''),foodState=$state('label'),unit=$state('g'),grams=$state(''),minimum=$state('0'),allergens=$state(''),tags=$state(''),known=$state(false);
  let micros=$state<{name:string;value:string;unit:string}[]>([]);
  const nutrientLabels:Record<string,string>={kcal:'Energija · kcal',protein:'Proteini · g',carbs:'Ugljikohidrati · g',fat:'Masti · g',fiber:'Vlakna · g'};
  let nutrients=$state<Record<string,string>>({kcal:'',protein:'',carbs:'',fat:'',fiber:''});
  let portions=$state('1'),minutes=$state('20'),method=$state('other'),category=$state('lunch'),steps=$state('');
- let ingredients=$state<{foodId:string;quantity:string;optional:boolean}[]>([]);let error=$state('');let busy=$state(false);
+ let ingredients=$state<{foodId:string;quantity:string;optional:boolean}[]>([]);let error=$state('');
  let carbDefinition=$state('unknown'),energyMethod=$state('declared');
  $effect(()=>{carbDefinition=food?.nutritionData?.carbDefinition??'unknown';energyMethod=food?.nutritionData?.energyMethod??'declared'});
  let draft=$state<UsdaDraft|null>(null),allowDuplicate=$state(false);
@@ -29,12 +32,14 @@
   const preserve=sameValues&&carbDefinition===food?.nutritionData?.carbDefinition&&energyMethod===food?.nutritionData?.energyMethod;
   return {carbDefinition,energyMethod,originalValues:preserve?food?.nutritionData?.originalValues??[]:[]};
  }
- $effect(()=>{if(recipe){name=recipe.name;portions=recipe.portions;minutes=String(recipe.minutes);method=recipe.method;category=recipe.category;steps=recipe.steps.join('\n');tags=recipe.tags.join(', ');ingredients=recipe.ingredients.map(i=>({...i}))}else if(food){name=food.name;source=food.source;foodState=food.state;unit=food.unit;grams=food.gramsPerUnit??'';minimum=food.minimumQuantity;allergens=food.allergens.join(', ');tags=food.dietaryTags.join(', ');known=food.allergensKnown;micros=Object.entries(food.micronutrients??{}).map(([name,m])=>({name,value:m.value,unit:m.unit}));nutrients=Object.fromEntries(Object.entries(food.nutrients).map(([k,v])=>[k,v??'']))}});
- async function save(e:SubmitEvent){e.preventDefault();if(busy || (matches.length && !allowDuplicate))return;error='';busy=true;try{
- if(mode==='food'){await nutritionApi(food?`/foods/${food.id}`:allowDuplicate?'/foods?allowDuplicate=true':'/foods',food?'PATCH':'POST',{name,state:foodState,unit,gramsPerUnit:grams||null,minimumQuantity:minimum,allergens:allergens.split(',').map(x=>x.trim()).filter(Boolean),allergensKnown:known,dietaryTags:tags.split(',').map(x=>x.trim()).filter(Boolean),nutrients:Object.fromEntries(Object.entries(nutrients).map(([k,v])=>[k,v||null])),source,sourceId:draft?.sourceId??food?.sourceId??null,nutritionData:nutritionData(),micronutrients:Object.fromEntries(micros.filter(m=>m.name).map(m=>[m.name,{value:m.value,unit:m.unit}])),expectedVersion:food?.version??1})}
+ $effect(()=>{if(recipe){name=recipe.name;portions=recipe.portions;minutes=String(recipe.minutes);method=recipe.method;category=recipe.category;steps=recipe.steps.join('\n');tags=recipe.tags.join(', ');ingredients=recipe.ingredients.map(i=>({...i}))}else if(food){name=food.name;source=food.source;foodState=food.state;unit=food.unit;grams=food.gramsPerUnit??'';minimum=food.minimumQuantity;allergens=food.allergens.join(', ');tags=food.dietaryTags.join(', ');known=food.allergensKnown;micros=Object.entries(food.micronutrients??{}).map(([name,m])=>({name,value:m.value,unit:m.unit}));nutrients=Object.fromEntries(Object.entries(food.nutrients).map(([k,v])=>[k,v??'']))}else if(mode==='food'){name=initialName}});
+ async function save(e:SubmitEvent){e.preventDefault();if(saving || (matches.length && !allowDuplicate))return;error='';saving=true;try{
+ let savedFood:Food|undefined;
+ if(mode==='food'){savedFood=await nutritionApi<Food>(food?`/foods/${food.id}`:allowDuplicate?'/foods?allowDuplicate=true':'/foods',food?'PATCH':'POST',{name,state:foodState,unit,gramsPerUnit:grams||null,minimumQuantity:minimum,allergens:allergens.split(',').map(x=>x.trim()).filter(Boolean),allergensKnown:known,dietaryTags:tags.split(',').map(x=>x.trim()).filter(Boolean),nutrients:Object.fromEntries(Object.entries(nutrients).map(([k,v])=>[k,v||null])),source,sourceId:draft?.sourceId??food?.sourceId??null,nutritionData:nutritionData(),micronutrients:Object.fromEntries(micros.filter(m=>m.name).map(m=>[m.name,{value:m.value,unit:m.unit}])),expectedVersion:food?.version??1})}
  else {await nutritionApi(recipe?`/recipes/${recipe.id}`:'/recipes',recipe?'PATCH':'POST',{name,portions,minutes:Number(minutes),method,category,steps:steps.split('\n').filter(Boolean),ingredients,tags:tags.split(',').map(x=>x.trim()).filter(Boolean),expectedVersion:recipe?.version??1})}
- await onchange();if(!recipe&&!food){name='';ingredients=[];steps=''}
- }catch(e){error=e instanceof Error?e.message:String(e);if(draft && e instanceof DashboardApiError && e.status===409)await onrefresh?.()}finally{busy=false}}
+ if(destroyed)return;
+ await onchange(savedFood);if(!recipe&&!food){name='';ingredients=[];steps=''}
+ }catch(e){if(destroyed)return;error=e instanceof Error?e.message:String(e);if(draft && e instanceof DashboardApiError && e.status===409)await onrefresh?.()}finally{saving=false}}
 </script>
 <form class="nutrition-form" onsubmit={save}>
  {#if mode==='food'}<p class="quiet">Nutritivne vrijednosti unesi na 100 g odabranog stanja namirnice. Nakon spremanja količinu koju dodaješ u zalihe unosiš u Prijemu namirnica.</p>{/if}
@@ -71,5 +76,5 @@
  {#each ingredients as item,i}<div class="nutrition-ingredient"><label>Namirnica<select required bind:value={item.foodId}><option value="">Odaberi</option>{#each foods as f}<option value={f.id}>{f.name} · {f.unit} · {f.state}</option>{/each}</select></label><label>Količina<input required inputmode="decimal" bind:value={item.quantity}/></label><button type="button" class="btn" onclick={()=>ingredients=ingredients.filter((_,j)=>j!==i)}>Ukloni</button></div>{/each}
  <button type="button" class="btn" onclick={()=>ingredients.push({foodId:'',quantity:'100',optional:false})}>Dodaj sastojak</button>
  <label>Koraci · svaki u novom retku<textarea required rows="5" bind:value={steps}></textarea></label>{/if}
- {#if error}<p class="error" role="alert">{error}</p>{/if}<button class="btn" disabled={busy || (matches.length>0 && !allowDuplicate)}>{food||recipe?'Spremi novu verziju':'Spremi'}</button>
+ {#if error}<p class="error" role="alert">{error}</p>{/if}<button class="btn" disabled={saving || (matches.length>0 && !allowDuplicate)}>{food||recipe?'Spremi novu verziju':'Spremi'}</button>
 </form>

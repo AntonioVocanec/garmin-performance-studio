@@ -7,3 +7,149 @@
 .usda-picker { grid-column: 1 / -1; min-width: 0; }
 .usda-picker .nutrition-actions { align-items: end; }
 .usda-picker .nutrition-actions label { flex: 1 1 180px; }
+
+.nutrition-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.nutrition-subnav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.nutrition-subnav a:hover,
+.nutrition-subnav a[aria-current="page"] {
+  border-color: var(--line);
+  color: var(--text);
+  background: var(--surface);
+}
+.nutrition-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.shell[data-active-view="nutrition"] .quick-nav a {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .shell[data-active-view="nutrition"] .quick-nav a {
+    flex: 1;
+    justify-content: center;
+    padding-inline: 4px;
+  }
+}
+
+.nutrition-heading {
+  flex: 1 0 210px;
+}
+.nutrition-heading .badge {
+  margin-top: 4px;
+}
+.nutrition .nutrition-primary {
+  border-color: rgba(105, 215, 239, .36);
+  background: #183b47;
+  color: #e8faff;
+  font-weight: 700;
+}
+.nutrition-day {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.nutrition-day-summary {
+  display: grid;
+  gap: 12px;
+  grid-column: 2;
+  grid-row: 1;
+}
+.nutrition-day-meals {
+  grid-column: 1;
+  grid-row: 1;
+}
+.nutrition-meal {
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+}
+.nutrition-dialog {
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  color: var(--text);
+}
+.nutrition-dialog::backdrop {
+  background: rgb(3 9 13 / .8);
+}
+@media (max-width: 760px) {
+  .nutrition-day { grid-template-columns: minmax(0, 1fr); }
+  .nutrition-day-summary, .nutrition-day-meals { grid-column: auto; grid-row: auto; }
+}
+
+.nutrition details.nutrition-profile > summary {
+  display: flex;
+  align-items: center;
+  padding: 9px 12px;
+  list-style: none;
+}
+.nutrition-profile > summary::-webkit-details-marker {
+  display: none;
+}
+.nutrition-profile[open] {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.nutrition-profile[open] > summary {
+  width: fit-content;
+}
+.nutrition-profile > form {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.nutrition-receipt-fields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.nutrition-receipt-fields .nutrition-actions {
+  align-items: end;
+}
+.nutrition-receipt-fields .nutrition-actions label {
+  flex: 1 1 160px;
+}
+
+.nutrition-planner-controls{display:grid;gap:14px}
+.nutrition-week-picker{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.nutrition-week-picker .btn{display:grid;place-items:center;padding:5px 3px;text-align:center;min-width:0}
+.nutrition-week-picker .btn[aria-pressed=true],.nutrition .nutrition-plan-day.nutrition-selected-day{border-color:var(--cyan)}
+.nutrition-week-picker .btn[aria-pressed=true]{color:var(--cyan);font-weight:750}
+.nutrition .nutrition-week{grid-template-columns:repeat(4,minmax(0,1fr));align-items:start}
+.nutrition-plan-day h3{text-transform:capitalize;overflow-wrap:anywhere}
+.nutrition-plan-item .nutrition-actions{margin-top:10px;gap:6px}
+.nutrition-plan-item>b,.nutrition-cooking-needs dt,.nutrition-cooking-needs dd{overflow-wrap:anywhere}
+.nutrition-prep-fields{border:0;padding:0;margin:0;min-width:0;display:grid;gap:12px;justify-items:start}
+.nutrition-prep-fields .nutrition-fields{width:100%}
+.nutrition-cooking-preview,.nutrition-result-link{margin-top:14px}
+.nutrition-cooking-needs{margin:12px 0}
+.nutrition-cooking-needs>div{padding:9px 0;border-top:1px solid var(--line)}
+.nutrition-cooking-needs dt{font-weight:650}
+.nutrition-cooking-needs dd{margin:3px 0 0;color:var(--muted)}
+#nutrition-shopping-builder{scroll-margin-top:140px}
+@media(max-width:1090px){.nutrition .nutrition-week{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){
+ .nutrition .nutrition-week{grid-template-columns:1fr}
+ .nutrition .nutrition-plan-day:not(.nutrition-selected-day){display:none}
+ .nutrition-week-picker .btn{font-size:11px}
+ .nutrition #nutrition-shopping-builder{scroll-margin-top:174px}
+}

@@ -226,6 +226,19 @@ class NutritionTests(unittest.TestCase):
         self.service.log('eat',Log(date='2026-11-14',meal='lunch',kind='portion',sourceId=cooked['lotId'],quantity=1).model_dump())
         with self.connection() as db:self.assertEqual(self.service.diary(db,date(2026,11,14))['nutrients']['kcal'],'60')
 
+    def test_cooking_preview_availability_aggregates_ingredients_and_excludes_expired_stock(self):
+        recipe = self.optional_recipe()
+        self.receipt('expired','100','2026-11-13')
+        self.receipt('available','30','2026-12-01')
+        body=self.cooking_body(recipe,3) | {'optionalIngredientPositions':[1]}
+        preview=self.prep_endpoint()(Cook.model_validate(body))['data']
+        self.assertFalse(preview['feasible'])
+        self.assertEqual(preview['ingredientAvailability'], [{
+            'foodId':self.food['id'], 'name':self.food['name'], 'unit':'g',
+            'required':'45', 'available':'30', 'missing':'15',
+        }])
+        self.assertEqual(preview['missing'][0]['quantity'],'15')
+
     def test_changed_inventory_requires_refresh_even_when_stock_is_still_sufficient(self):
         self.receipt('stock','200','2026-12-01')
         body=self.cooking_body()
