@@ -430,12 +430,11 @@ export function initializeDashboardViews(): void {
         return a.order - b.order;
       });
 
-    orderedLinks.forEach(({ link }, index) => {
+    orderedLinks.forEach(({ link }) => {
       const anchor = document.createElement("a");
       anchor.href = `#${link.id}`;
       anchor.dataset.dashboardView = view.id;
-      if (view.id === "nutrition") anchor.textContent = link.label;
-      else anchor.innerHTML = `<span class="quick-nav-index">${String(index + 1).padStart(2, "0")}</span>${link.label}`;
+      anchor.textContent = link.label;
       quickNavLinks.append(anchor);
     });
   }
