@@ -122,3 +122,7 @@ GPS-20261116-nutrition-ai-recovery-01 aktiviran je uz korisničko odobrenje. Ukl
 ### Aktivacija AI količina · 16. 11. 2026.
 
 GPS-20261116-ai-quantity-schema-01 aktiviran uz odobrenje. PID 39976, port 8787. Python 125/125 i pnpm check prolaze. Zadržan prethodno verificirani frontend, potvrđeno 20/20 hashova. SQLite v12 i sadržaj svih 36 tablica provjereni, integritet i strane veze prolaze. Stvarni plaćeni AI poziv nije izvršen. Evidencija je u releases/GPS-20261116-ai-quantity-schema-01/local-activation.json.
+
+## GPS-20261120-nutrition-redesign-01
+
+Aktiviran je redizajn Prehrane do faze 4. Kod je u commitu `45775783401d10d0f37bc665d3166985dbd66009`. PID 38696 sluša na 127.0.0.1:8787. Provjereni su Tailscale HTTPS, 20/20 posluženih frontend datoteka, 14 HTTP provjera i Chromium prikaz na produkcijskom buildu. SQLite v12 prolazi integritet i provjeru stranih ključeva. Očuvan je sadržaj svih 36 tablica i izrađena je konzistentna sigurnosna kopija izvan rotacije. Izolirane provjere obuhvaćaju 126 Python testova, 104 Playwright scenarija, pnpm check i produkcijski build. Provjera stvarnim čitačem zaslona pripada fazi 5. [Manifest](releases/GPS-20261120-nutrition-redesign-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261120-nutrition-redesign-01/local-activation.json).

@@ -1,0 +1,31 @@
+{
+  "bindAddress": "127.0.0.1",
+  "databaseBackupSha256": "b784fb70e728ebe24dc2fc2425da7af81b5c1270ac645b1bde1188da469aec65",
+  "httpChecksPassed": 14,
+  "manifestSha256": "05ea20d2ea2330ec0089fe817bd09ae4a9223b40bf2e4bc70a1ea6531982184f",
+  "migrationExecuted": false,
+  "notes": [
+    "Chromium used simulated external Garmin responses with live read-only Nutrition endpoints.",
+    "No saved recipe was available for the production version-by-ID smoke. The isolated E2E test exercised the route with a saved version."
+  ],
+  "openApiContract": "PASS",
+  "paidAiRequestsFromVerification": 0,
+  "pid": 38696,
+  "port": 8787,
+  "preservedTables": 36,
+  "previousSourceArchiveSha256": "ccf4a2c337ed1e293cbe2421e5916d298a06b80a4cc7b6a0b6555b7ab991181b",
+  "productionChromiumSmoke": "PASS",
+  "productionWritesFromSmoke": 0,
+  "recipeVersionRead": "CONTRACT_ONLY",
+  "releaseId": "GPS-20261120-nutrition-redesign-01",
+  "rollbackCommit": "e62c1c8621929bab0800aa35298c0efb0cf4bc48",
+  "rollbackRelease": "GPS-20261116-ai-quantity-schema-01",
+  "servedFileHashesMatched": 20,
+  "sourceCommit": "45775783401d10d0f37bc665d3166985dbd66009",
+  "sqliteForeignKeys": "PASS",
+  "sqliteIntegrity": "PASS",
+  "sqliteSchema": 12,
+  "status": "PRODUCTION_ACTIVE",
+  "tailscaleHttpsHealth": "PASS",
+  "verifiedAt": "2026-11-20T20:51:03+01:00"
+}
