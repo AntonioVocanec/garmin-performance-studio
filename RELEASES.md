@@ -130,3 +130,7 @@ Aktiviran je redizajn Prehrane do faze 4. Kod je u commitu `45775783401d10d0f37b
 ## GPS-20261121-nutrition-my-day-01
 
 Dorada „Moj dan” aktivirana je na portu 8787. Nakon prestanka prethodnog procesa servis je pokrenut s PID-om 16368. Novi prikaz objedinjuje energiju i makronutrijente. Upozorenja se prikazuju u Zalihama. Provjereno je 20/20 frontend datoteka, jedan Chromium scenarij na aktivnom servisu i Tailscale HTTPS. SQLite v12 prolazi provjeru integriteta i stranih ključeva. Sadržaj svih 36 tablica očuvan je. U izdvojenom okruženju prošli su 18 ciljanih Playwright scenarija, pnpm check i build. [Manifest](releases/GPS-20261121-nutrition-my-day-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-nutrition-my-day-01/local-activation.json).
+
+## GPS-20261121-recovery-cards-01
+
+Kartice doprinosa oporavku prikazuju dostupnost mjerenja i pokrivenost višednevnih pokazatelja. Iz prikaza su uklonjeni interni nazivi izvora i vremena dohvata. Frontend je aktiviran na portu 8787. Provjereno je 20/20 posluženih datoteka, Chromium sa sintetičkim podacima i Tailscale HTTPS. SQLite v12 prolazi integritet i provjeru stranih ključeva, a sadržaj svih 36 tablica očuvan je. Prošli su svih sedam Playwright scenarija za analitiku, pnpm check i izdvojeni build. [Manifest](releases/GPS-20261121-recovery-cards-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-recovery-cards-01/local-activation.json).

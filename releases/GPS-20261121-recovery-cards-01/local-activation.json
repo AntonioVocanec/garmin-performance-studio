@@ -1,0 +1,20 @@
+{
+  "databaseBackupSha256": "258be310007d928d26425140b81576cb33f4cb4f1d19c864f1314532213ecabb",
+  "manifestSha256": "924cd69b9b1f3d8660cd52d0ef7f4ddc9402e637065d05fab07a40518742f587",
+  "migrationExecuted": false,
+  "pid": 16368,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS_WITH_SYNTHETIC_DATA",
+  "releaseId": "GPS-20261121-recovery-cards-01",
+  "rollbackRelease": "GPS-20261121-nutrition-my-day-01",
+  "sourceCommit": "fb85a999448875fbd2dc44cc2078c9901dcb6d56",
+  "sqliteForeignKeys": "PASS",
+  "sqliteIntegrity": "PASS",
+  "sqliteSchema": 12,
+  "status": "PRODUCTION_ACTIVE",
+  "tailscaleHttpsHealth": "PASS",
+  "tailscaleIndexHash": "PASS",
+  "verifiedAt": "2026-11-21T00:47:10+01:00",
+  "verifiedFrontendFiles": 20,
+  "verifiedSqliteTables": 36
+}

@@ -1,0 +1,35 @@
+{
+  "checks": {
+    "isolatedBuild": "PASS",
+    "pnpmCheck": "PASS",
+    "targetedPlaywright": 7
+  },
+  "createdAt": "2026-11-21T00:46:10+01:00",
+  "frontendFilesSha256": {
+    "assets/charts-COG0-PAb.js": "fe81dba7816d780b312496a4fccfb1c1710f3dee2e65683843f5dd2a22164dcf",
+    "assets/echarts-BMe-UQDq.js": "4f188738ac2008bd60b98592e193e573ae4bc5b111b901470251747e409192ae",
+    "assets/echarts-BPIxtr-6.js": "95e98ad0d7e154e88b40785231b2eb000c5d41e7dd63ac05545a58ee47a50e98",
+    "assets/echarts-BaQZWPmU.js": "164656cae6d368b621d2af8ed0f1291f3a95dfbd105550b6ea516503c819b241",
+    "assets/echarts-C6mjtOId.js": "cba8750992fc53e121c382672b8b737dcbfadd0e7e190a2d7d9121292e63245c",
+    "assets/echarts-CAQbB7el.js": "0bb4fba4f27d03e33b1a5e03429532980a1207afde57cfca9ef941077df7df2f",
+    "assets/echarts-CWngFfWh.js": "622e582d34adc8c003d47894404599d85c1a7a1cff34c042f51cd10f81a1af41",
+    "assets/echarts-D3MkLsME.js": "2926724d725616b66a4488f7d544717b9bb9960c5a786614df8110b3980e847b",
+    "assets/echarts-DcVcY0B6.js": "28d8eac636197cba5b9d2b01149dc4895b52cbc18c9b5bcc151af69f57165275",
+    "assets/echarts-DnjWSIxP.js": "c85560a5a4ae86d4051030b2c238fc2f17d773700e3612a7fef174049c117cec",
+    "assets/echarts-d3mXloho.js": "7204597a555abc1d77b50ad66ebff048719d0e53ddb7b2a7dc70f08ef2ab8f12",
+    "assets/index-B8zGuzJI.css": "ed206e79b5e7f571afd8f74d1cc86e27651a392006510fbe6c86bb900ecd46f3",
+    "assets/index-BuFghEtz.js": "7e61cec9823cc671670b19fd42b1ef1127fdb9c2e095ef5de7c793d9c14cda7f",
+    "assets/rolldown-runtime-Bi-D_2cA.js": "7d48d4b615c3c358e8f680a9f3c18dbde02e565848e8986462f8259b8f7c7daa",
+    "icons/garmin-studio.svg": "056323d8df9170ee4bbcfa4c63188f98d01b236a8c8cb99b3769b1b086c5c857",
+    "icons/icon-192.png": "8b98ba6dadbcd54fcaaaedd9c39602edebcd55ba60d8d69ef63093b540d067e5",
+    "icons/icon-512.png": "ea251a1fca59dd61b45c7b4d83b9791a8bdfc54ca8c141f6edd95afb12a6e2bb",
+    "index.html": "20bd9affc35db40c293fbf997aa60469086e06f2a20ffb8926866e644ebc4341",
+    "manifest.webmanifest": "f72ee0fe42046752f5db756134ce9a411312ac332997fddd5daffe2ab9b9e0b9",
+    "service-worker.js": "1b1a51d7d8f6dd0334c8021918491f1ea06694550b55ade71d5d4ee3f68726cb"
+  },
+  "frontendZipSha256": "c34a18648533a197e8f34b609b326012db086888f2b8f6b3d7b999346e1dfd50",
+  "migrationRequired": false,
+  "previousRelease": "GPS-20261121-nutrition-my-day-01",
+  "releaseId": "GPS-20261121-recovery-cards-01",
+  "sourceCommit": "fb85a999448875fbd2dc44cc2078c9901dcb6d56"
+}
