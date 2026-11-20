@@ -134,3 +134,7 @@ Dorada „Moj dan” aktivirana je na portu 8787. Nakon prestanka prethodnog pro
 ## GPS-20261121-recovery-cards-01
 
 Kartice doprinosa oporavku prikazuju dostupnost mjerenja i pokrivenost višednevnih pokazatelja. Iz prikaza su uklonjeni interni nazivi izvora i vremena dohvata. Frontend je aktiviran na portu 8787. Provjereno je 20/20 posluženih datoteka, Chromium sa sintetičkim podacima i Tailscale HTTPS. SQLite v12 prolazi integritet i provjeru stranih ključeva, a sadržaj svih 36 tablica očuvan je. Prošli su svih sedam Playwright scenarija za analitiku, pnpm check i izdvojeni build. [Manifest](releases/GPS-20261121-recovery-cards-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-recovery-cards-01/local-activation.json).
+
+## GPS-20261121-dashboard-readability-01
+
+Povećana je čitljivost kartica i grafikona u četiri glavna prikaza. Tehnički podaci o dohvaćanju uklonjeni su iz dnevnih kartica. Svih 20 datoteka provjereno je preko porta 8787. Chromium je provjerio veličinu teksta na 390, 836 i 1440 px uz simulirane podatke. [Manifest](releases/GPS-20261121-dashboard-readability-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-dashboard-readability-01/local-activation.json).

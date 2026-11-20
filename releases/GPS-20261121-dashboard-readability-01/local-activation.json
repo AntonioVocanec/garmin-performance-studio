@@ -1,0 +1,18 @@
+{
+  "databaseBackupSha256": "57b2a9c049cfd6a00e2fc5b1d2b4c8452b88ab0215a987c66c3229944e7d7ca6",
+  "manifestSha256": "723cd1501df8be5e102738323d8eaf9c52351cab5f53f08322ec613e2ba42cf2",
+  "migrationExecuted": false,
+  "pid": 16368,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS_WITH_SYNTHETIC_DATA",
+  "releaseId": "GPS-20261121-dashboard-readability-01",
+  "rollbackRelease": "GPS-20261121-recovery-cards-01",
+  "sourceCommit": "f44d5bf5507322e89ea5fe171e024173f6dd9155",
+  "sqliteForeignKeys": "PASS",
+  "sqliteIntegrity": "PASS",
+  "sqliteSchema": 12,
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T00:53:31+01:00",
+  "verifiedFrontendFiles": 20,
+  "verifiedSqliteTables": 36
+}
