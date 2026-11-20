@@ -17,12 +17,31 @@ test('health history loads a real selected range and exposes gaps and coverage o
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBeTruthy();
 });
 
-test('recovery contributions show independent values and insufficient baseline',async({page})=>{
+test('recovery cards show values and relevant coverage without technical metadata',async({page})=>{
+ const fetchedAt='2026-06-02T10:42:15+00:00';
  await mockDashboardApi(page);await page.route('**/api/dashboard**',async route=>{
   const payload=dashboardPayload(new URL(route.request().url()).searchParams.get('date')!) as unknown as {date:string;normalized:Record<string,unknown>};
-  payload.normalized.recoveryContributions={date:payload.date,summary:'1/6 doprinosa ima zapis.',signals:[{key:'hrv',label:'HRV',value:60,unit:'ms',date:payload.date,source:'Synthetic',fetchedAt:null,sampleDays:1,expectedDays:1,baselineDays:6,baseline:null,delta:null,note:'Noćni prosjek.',partial:false}]};
+  const shared={date:payload.date,source:'technicalRecoverySource',fetchedAt,baseline:null,delta:null,partial:false};
+  payload.normalized.recoveryContributions={date:payload.date,summary:'2/6 doprinosa ima zapis.',signals:[
+   {...shared,key:'hrv',label:'HRV',value:60,unit:'ms',sampleDays:1,expectedDays:1,baselineDays:6,note:'Noćni prosjek.'},
+   {...shared,key:'debt',label:'Sleep Debt',value:0,unit:'s',sampleDays:13,expectedDays:14,baselineDays:0,note:'Manjak sna.'},
+   {...shared,key:'sleep',label:'San',value:null,unit:'s',sampleDays:0,expectedDays:1,baselineDays:28,baseline:25200,note:'Posljednja noć.'},
+  ]};
   await route.fulfill({json:payload});
- });await page.goto('/');await page.locator('#recovery-contributions > summary').click();await expect(page.locator('#recovery-contributions')).toContainText('60 ms');await expect(page.locator('#recovery-contributions')).toContainText('6/28 dana');
+ });
+ await page.goto('/');
+ await page.locator('#recovery-contributions > summary').click();
+ const panel=page.locator('#recovery-contributions');
+ const cards=panel.getByRole('article');
+ await expect(cards.nth(0)).toContainText('60 ms');
+ await expect(cards.nth(0)).toContainText('6/28 dana');
+ await expect(cards.nth(1)).toContainText('0 h 0 min');
+ await expect(cards.nth(1)).toContainText('13/14 dana s podacima');
+ await expect(cards.nth(2)).toContainText('Nema zapisa za odabrani dan.');
+ await expect(cards.nth(2)).toContainText('Osobni medijan 7 h 0 min · 28/28 dana.');
+ await expect(panel).not.toContainText('technicalRecoverySource');
+ await expect(panel).not.toContainText(fetchedAt);
+ await expect(panel).not.toContainText('Dohvat');
 });
 
 test('nutrition training context explains incomplete days without inventing groups',async({page})=>{
