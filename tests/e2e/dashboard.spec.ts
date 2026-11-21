@@ -32,8 +32,8 @@ test("renders Garmin and Runna overview without browser errors", async ({ page }
   await expect(page).toHaveTitle("Garmin Performance Studio");
   await expect(page.getByRole("tab", { name: "Pregled" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#today-energy")).toHaveText("70");
-  await expect(page.locator("#today-interpretation")).toHaveText("Sleep debt · 1 h 30 min u dostupnom prozoru");
-  await expect(page.locator("#hero-executive-copy")).toContainText("Prosjek sna zadnjih 7 dana: 7 h 00 min");
+  await expect(page.locator("#today-interpretation")).toHaveText("Sleep Debt · 1 h 30 min manjka sna");
+  await expect(page.locator("#hero-executive-copy")).toContainText("Prosjek sna zadnjih 7 dana je 7 h 00 min");
   await expect(page.locator("#today-training-status")).toHaveText("Produktivan");
   await expect(page.locator("#today-acwr")).toHaveText("0,9 · Optimalno");
   await expect(page.locator("#today-load-focus")).toHaveText("Nije dostupan");

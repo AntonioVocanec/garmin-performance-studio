@@ -78,7 +78,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
   const renderHealthOverview=payload=>{
     const n=payload.normalized||{},sleep=n.sleep||{},debt=n.sleepDebt||{},recovery=n.recovery||{},summary=n.dailySummary||{},baseline=n.personalRecoveryBaseline||{},trends=n.recoveryTrends||[],end=String(payload.date||"").slice(0,10);
     const score=sleep.score==null||sleep.score===""?null:Number(sleep.score),sleepValid=score!=null&&Number.isFinite(score),scoreLabel=!sleepValid?"Nema Sleep Score":score>=90?"Izvrsno":score>=80?"Dobro":score>=60?"Zadovoljavajuće":"Nisko",sleepTone=!sleepValid?"empty":score>=80?"good":score>=60?"watch":"low";
-    const hrv=baseline.hrv||{},rhr=baseline.restingHeartRate||{},hrvDelta=hrv.delta==null?null:Number.isFinite(Number(hrv.delta))?Number(hrv.delta):null,rhrDelta=rhr.delta==null?null:Number.isFinite(Number(rhr.delta))?Number(rhr.delta):null,hrvRatio=hrv.current!=null&&Number(hrv.median28d)>0?Number(hrv.current)/Number(hrv.median28d):null,hrvClearlyBelow=hrvRatio!=null&&hrvRatio<0.9,hrvNearBase=hrvRatio!=null&&Math.abs(hrvRatio-1)<=0.1,rhrNearBase=rhrDelta!=null&&Math.abs(rhrDelta)<=3;
+    const hrv=baseline.hrv||{},rhr=baseline.restingHeartRate||{},hrvDelta=hrv.delta==null?null:Number.isFinite(Number(hrv.delta))?Number(hrv.delta):null,rhrDelta=rhr.delta==null?null:Number.isFinite(Number(rhr.delta))?Number(rhr.delta):null;
     const rawHrvStatus=String(recovery.hrvStatus||"").trim(),hrvStatusKey=rawHrvStatus.toLowerCase(),hrvStatusLabel=({balanced:"U ravnoteži",unbalanced:"Izvan ravnoteže",low:"Nizak",poor:"Nizak",strained:"Opterećen",unbalanced_low:"Nizak"})[hrvStatusKey]||rawHrvStatus||"Nema HRV statusa",recoveryTone=/unbalanced|low|poor|strained/.test(hrvStatusKey)?"watch":/balanced|optimal|good/.test(hrvStatusKey)?"good":"neutral";
     const dailySource=payload.sources?.dailySummaries;
     const movementAvailable=(recovery.steps??summary.steps)!=null||(
@@ -120,20 +120,100 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
       : `Medijan ${num(rhr.median28d,1)} bpm · ${num(rhr.sampleDays)}/28 dana`;
     const restingChange=rhrDelta==null?"":`${rhrDelta>0?"+":rhrDelta<0?"−":""}${num(Math.abs(rhrDelta),1)} bpm prema bazi · `;
     $("today-rhr-context").textContent=resting==null?"Puls u mirovanju nije zabilježen":restingChange+restingContext;
-    let insightTitle="Signali su prikazani uz tvoju osobnu bazu",insightCopy="Uspoređuj više dana zajedno; jedna vrijednost sama ne određuje oporavak ni spremnost za trening.";
-    if(debt.debtSeconds!=null&&Number(debt.debtSeconds)>0){insightTitle=`Sleep debt · ${duration(debt.debtSeconds)} u dostupnom prozoru`;insightCopy=`Prosjek sna zadnjih 7 dana: ${debt.average7dSeconds==null?"—":duration(debt.average7dSeconds)}. U izračun je uključeno ${num(debt.daysAvailable)}/${num(debt.daysExpected||14)} zabilježenih noći.`}
-    else if(sleepValid&&score<60){insightTitle=`Garmin je ocijenio san s ${num(score)}/100`;insightCopy="Pogledaj trajanje sna, prethodni sleep debt i osobni trend prije zaključka o tome kako se osjećaš."}
-    else if(hrvClearlyBelow||rhrDelta!=null&&rhrDelta>3){const parts=[];if(hrvClearlyBelow&&hrv.median28d!=null)parts.push(`HRV ${num(Math.abs(Number(hrv.current)-Number(hrv.median28d)))} ms ispod medijana`);if(rhrDelta!=null&&rhrDelta>3&&rhr.median28d!=null)parts.push(`Puls u mirovanju ${num(rhrDelta)} bpm iznad medijana`);insightTitle="Oporavak odstupa od dijela osobne baze";insightCopy=`${parts.join(" · ")||"Provjeri HRV status"}. Usporedi ove signale sa snom, opterećenjem i subjektivnim check-inom.`}
-    else if(hrvNearBase&&rhrNearBase){insightTitle="Oporavak je blizu nedavne osobne baze";insightCopy=`HRV ${hrvDelta>=0?"iznad":"ispod"} medijana za ${num(Math.abs(hrvDelta))} ms · puls u mirovanju ${rhrDelta>=0?"iznad":"ispod"} medijana za ${num(Math.abs(rhrDelta))} bpm. To je kontekst, ne ocjena spremnosti.`}
-    $("health-insight-title").textContent=insightTitle;
-    $("health-insight-copy").textContent=insightCopy.split(/(?<=\.)\s+/u)[0];
-    $("today-interpretation").textContent=insightTitle;
-    $("today-interpretation").title=insightCopy;
-    $("hero-executive-copy").textContent=insightCopy;
-
     const recentStart=isoShift(end,-6),previousEnd=isoShift(end,-7),previousStart=isoShift(end,-13);
-    const compare=(rows,key,formatter,unit="",target="sleep-recovery")=>{
-      const recent=averageInRange(rows,key,recentStart,end),previous=averageInRange(rows,key,previousStart,previousEnd);
+    const sleepRows=(sleep.history||[]).map(row=>({date:row.date,value:row.totalSeconds}));
+    const weeklyPair=(rows,key)=>({
+      recent:averageInRange(rows,key,recentStart,end),
+      previous:averageInRange(rows,key,previousStart,previousEnd),
+    });
+    const weekly={
+      sleep:weeklyPair(sleepRows,"value"),
+      hrv:weeklyPair(trends,"hrv"),
+      rhr:weeklyPair(trends,"restingHeartRate"),
+      battery:weeklyPair(trends,"bodyBattery"),
+    };
+    const reading=value=>value==null||value===""||!Number.isFinite(Number(value))?null:Number(value);
+    const measuredSleep=reading(sleep.totalSeconds),measuredHrv=reading(hrvCurrent),measuredRhr=reading(resting);
+    const sleepBase=baselineReference(sleepBaseline),hrvBase=baselineReference(hrv),rhrBase=baselineReference(rhr);
+    const sleepDifference=measuredSleep!=null&&sleepBase?measuredSleep-sleepBase.value:null;
+    const validHrvDelta=measuredHrv!=null&&hrvBase?measuredHrv-hrvBase.value:null;
+    const validRhrDelta=measuredRhr!=null&&rhrBase?measuredRhr-rhrBase.value:null;
+    const difference=(delta,format)=>delta===0?"na osobnom medijanu":`${format(Math.abs(delta))} ${delta>0?"iznad":"ispod"} osobnog medijana`;
+    const conciseHrv=measuredHrv==null?null:hrvStatusKey?`Garmin HRV označava kao „${hrvStatusLabel}”`:`noćni HRV je ${num(measuredHrv,1)} ms`;
+    const details={
+      sleep:measuredSleep==null?null:sleepDifference==null
+        ? `San je trajao ${duration(measuredSleep)}, a osobni medijan sna još nije dostupan.`
+        : `San je trajao ${duration(measuredSleep)}, ${sleepDifference===0?"jednako osobnom medijanu":`${duration(Math.abs(sleepDifference))} ${sleepDifference>0?"dulje":"kraće"} od osobnog medijana`}.`,
+      hrv:measuredHrv==null?null:validHrvDelta==null
+        ? `Noćni HRV je ${num(measuredHrv,1)} ms, a osobni medijan HRV-a još nije dostupan.`
+        : `Noćni HRV je ${num(measuredHrv,1)} ms, ${difference(validHrvDelta,value=>num(value,1)+" ms")}.`,
+      rhr:measuredRhr==null?null:validRhrDelta==null
+        ? `Puls u mirovanju je ${num(measuredRhr,1)} bpm, a osobni medijan pulsa još nije dostupan.`
+        : `Puls u mirovanju je ${num(measuredRhr,1)} bpm, ${difference(validRhrDelta,value=>num(value,1)+" bpm")}.`,
+      battery:Number.isFinite(battery)?`Garmin bilježi Body Battery ${num(battery)}/100 za odabrani dan.`:null,
+    };
+    const sleepContext=sleepDifference==null?null:sleepDifference===0?"san je trajao jednako osobnom medijanu"
+      : `san je trajao ${duration(Math.abs(sleepDifference))} ${sleepDifference>0?"dulje":"kraće"} od osobnog medijana`;
+    const rhrContext=validRhrDelta==null?null:`puls u mirovanju je ${difference(validRhrDelta,value=>num(value,1)+" bpm")}`;
+    const debtSeconds=reading(debt.debtSeconds);
+    const hrvRatio=measuredHrv!=null&&hrvBase?.value>0?measuredHrv/hrvBase.value:null;
+    const highResting=validRhrDelta!=null&&validRhrDelta>3;
+    const lowHrv=hrvRatio!=null&&hrvRatio<0.9;
+    const nearBase=hrvRatio!=null&&Math.abs(hrvRatio-1)<=0.1&&validRhrDelta!=null&&Math.abs(validRhrDelta)<=3;
+    let insightTitle="Dnevni signali za odabrani datum";
+    let first="Za odabrani datum nema dovoljno zapisa za dnevni uvid.";
+    let context=[];
+    let trend=null;
+    if(debtSeconds!=null&&debtSeconds>0){
+      trend="sleep";
+      insightTitle=`Sleep Debt · ${duration(debtSeconds)} manjka sna`;
+      first=reading(debt.daysAvailable)==null?"Garmin bilježi manjak sna u dostupnom prozoru."
+        :`U izračun je uključeno ${num(debt.daysAvailable)}/${num(debt.daysExpected||14)} noći.`;
+      context=[reading(debt.average7dSeconds)==null?null:`prosjek sna zadnjih 7 dana je ${duration(debt.average7dSeconds)}`,conciseHrv];
+    }else if(sleepValid&&score<60){
+      trend="sleep";
+      insightTitle=`Garmin je ocijenio san s ${num(score)}/100`;
+      first=details.sleep??"Garmin za ovu noć ima ocjenu sna.";
+      context=[conciseHrv,rhrContext];
+    }else if(lowHrv&&highResting){
+      trend="rhr";
+      insightTitle="Puls i noćni HRV odstupaju od osobne baze";
+      first=`Puls u mirovanju je ${num(measuredRhr,1)} bpm, ${difference(validRhrDelta,value=>num(value,1)+" bpm")}, dok je noćni HRV ${difference(validHrvDelta,value=>num(value,1)+" ms")}.`;
+      context=[sleepContext];
+    }else if(highResting||lowHrv){
+      trend=highResting?"rhr":"hrv";
+      insightTitle=highResting?"Puls u mirovanju je iznad osobne baze":"Noćni HRV je ispod osobne baze";
+      first=details[trend];
+      context=[sleepContext,highResting?conciseHrv:rhrContext];
+    }else if(nearBase){
+      trend="hrv";
+      insightTitle="HRV i puls blizu su osobne baze";
+      first=details.hrv;
+      context=[rhrContext,sleepContext];
+    }else{
+      trend=["sleep","hrv","rhr","battery"].find(key=>details[key])??null;
+      if(trend){
+        insightTitle={sleep:"Trajanje sna",hrv:"Noćni HRV",rhr:"Puls u mirovanju",battery:"Body Battery"}[trend];
+        first=details[trend];
+        if(trend==="sleep"&&sleepDifference!=null)context=[conciseHrv,rhrContext];
+      }else if(debtSeconds===0){
+        insightTitle="Sleep Debt · bez manjka sna";
+        first="U dostupnom prozoru zabilježeno je 0 min manjka sna.";
+      }
+    }
+    const secondary=context.filter(Boolean).join(", a ");
+    const insightCopy=secondary
+      ? `${first} ${secondary[0].toLocaleUpperCase("hr-HR")}${secondary.slice(1)}.`
+      : first;
+    $("health-insight-title").textContent=insightTitle;
+    $("health-insight-copy").textContent=first;
+    $("today-interpretation").textContent=insightTitle;
+    $("hero-executive-copy").textContent=insightCopy;
+    const period=trend?weekly[trend]:null;
+    $("hero-weekly-link").hidden=!(period&&period.recent.count>=4&&period.previous.count>=4);
+    $("hero-check-in-link").hidden=end!==zagrebToday();
+
+    const compare=({recent,previous},formatter,unit="",target="sleep-recovery")=>{
       const delta=recent.value==null||previous.value==null?null:recent.value-previous.value;
       const change=delta==null?"Nedovoljno podataka":changeMarkup(delta,`${delta>0?"+":delta<0?"−":""}${formatter(Math.abs(delta))}${unit}`);
       const valueText=value=>value==null?"—":formatter(value)+unit;
@@ -143,9 +223,8 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
     const numberFormatter=value=>num(value,0);numberFormatter.label="HRV";
     const rhrFormatter=value=>num(value,0);rhrFormatter.label="Puls u mirovanju";
     const batteryFormatter=value=>num(value,0);batteryFormatter.label="Body Battery";
-    const sleepRows=(sleep.history||[]).map(row=>({date:row.date,value:row.totalSeconds}));
     $("health-weekly-range").textContent=`${fmtIsoDay(recentStart)}–${fmtIsoDay(end)}`;
-    $("health-weekly-trends").innerHTML=[compare(sleepRows,"value",hoursFormatter),compare(trends,"hrv",numberFormatter," ms","lab-recovery-panel-baseline"),compare(trends,"restingHeartRate",rhrFormatter," bpm","lab-recovery-panel-baseline"),compare(trends,"bodyBattery",batteryFormatter,"","body-battery-day")].join("");
+    $("health-weekly-trends").innerHTML=[compare(weekly.sleep,hoursFormatter),compare(weekly.hrv,numberFormatter," ms","lab-recovery-panel-baseline"),compare(weekly.rhr,rhrFormatter," bpm","lab-recovery-panel-baseline"),compare(weekly.battery,batteryFormatter,"","body-battery-day")].join("");
   };
   let skinTemperatureController=null;
   const skinDeviation=value=>value==null||!Number.isFinite(Number(value))?"—":`${Number(value)>0?"+":Number(value)<0?"−":""}${num(Math.abs(Number(value)),1)} °C`;
@@ -1362,7 +1441,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
     if(activeController)activeController.abort();activeController=new AbortController();void loadSkinTemperature(dateInput.value,forceRefresh);void loadGarminProfile(dateInput.value,forceRefresh);const button=$("refresh");button.disabled=true;button.textContent="Učitavam…";$("api-status").innerHTML='<i class="dot"></i>Učitavam Garmin';$("api-status").className="status";
     try{
       const target=dateInput.value;const payload=await getDashboard(target,forceRefresh,activeController.signal);if(payload.date!==dateInput.value)return;render(payload);publishDashboard(payload);window.dispatchEvent(new Event("dashboard:content-updated"));await loadJournal(target);
-    }catch(error){if(error.name==="AbortError")return;$("source-warning")?.setAttribute("hidden","");const offline=!navigator.onLine,message=offline?"Poveži se s kućnim računalom putem Tailscalea pa osvježi.":error.message;$("api-status").textContent=offline?"Izvan mreže":"Pogreška pri učitavanju";$("api-status").className="status error";$("today-interpretation").textContent="Pregled zdravlja nije dostupan";$("hero-executive-copy").textContent=message;$("health-overview-title").textContent="Pregled zdravlja nije dostupan";$("health-overview-summary").textContent=message;$("health-overview-coverage").textContent="—";$("health-insight-title").textContent="Čekam novu vezu s Garmin podacima";$("health-insight-copy").textContent="Zdravstveni signali i tjedni trendovi prikazat će se nakon osvježavanja.";$("health-weekly-trends").innerHTML="";$("overview").innerHTML=`<article class="metric error">${escapeHtml(message)}</article>`;$("schedule").innerHTML=`<div class="error">${offline?"Dashboard je izvan mreže.":"Provjeri Garmin ključ i API pristup."}</div>`}
+    }catch(error){if(error.name==="AbortError")return;$("source-warning")?.setAttribute("hidden","");const offline=!navigator.onLine,message=offline?"Poveži se s kućnim računalom putem Tailscalea pa osvježi.":error.message;$("api-status").textContent=offline?"Izvan mreže":"Pogreška pri učitavanju";$("api-status").className="status error";$("today-interpretation").textContent="Pregled zdravlja nije dostupan";$("hero-executive-copy").textContent=message;$("hero-weekly-link").hidden=true;$("hero-check-in-link").hidden=true;$("health-overview-title").textContent="Pregled zdravlja nije dostupan";$("health-overview-summary").textContent=message;$("health-overview-coverage").textContent="—";$("health-insight-title").textContent="Čekam novu vezu s Garmin podacima";$("health-insight-copy").textContent="Zdravstveni signali i tjedni trendovi prikazat će se nakon osvježavanja.";$("health-weekly-trends").innerHTML="";$("overview").innerHTML=`<article class="metric error">${escapeHtml(message)}</article>`;$("schedule").innerHTML=`<div class="error">${offline?"Dashboard je izvan mreže.":"Provjeri Garmin ključ i API pristup."}</div>`}
     finally{button.disabled=false;button.textContent="Osvježi podatke"}
   };
   let bloodLabAnalysis=null,bloodLabAiConfigured=false,bloodLabAiStatus=null,bloodLabBusy=false,bloodLabFiles=[];
@@ -1648,6 +1727,10 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
     applyHistoryWindow("custom",{start,end});
   });
   $("refresh").addEventListener("click",()=>load(true));dateInput.addEventListener("change",()=>{
+    $("today-interpretation").textContent="Učitavam dnevni uvid";
+    $("hero-executive-copy").textContent="";
+    $("hero-weekly-link").hidden=true;
+    $("hero-check-in-link").hidden=true;
     if(selectedHistoryWindow!=="auto"&&selectedHistoryWindow!=="custom")applyHistoryWindow(selectedHistoryWindow,presetHistoryRange(selectedHistoryWindow));
     else if(selectedHistoryWindow==="custom"&&activeHistoryRange?.end>dateInput.value){
       const end=dateInput.value,start=activeHistoryRange.start>end?isoShift(end,-27):activeHistoryRange.start;

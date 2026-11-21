@@ -499,3 +499,8 @@ html{scroll-padding-top:116px}
 @media (max-width: 22em) {
   #daily-signals, .recovery-contributions-grid { grid-template-columns: minmax(0,1fr); }
 }
+
+.hero-insight-actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem 1rem; }
+.hero-insight-actions a { color: var(--cyan); font-size: var(--text-detail); font-weight: 650; text-underline-offset: .2em; padding-block: .3rem; }
+.hero-insight-actions a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.hero-insight-actions:has(a:not([hidden])) { margin-top: .35rem; }

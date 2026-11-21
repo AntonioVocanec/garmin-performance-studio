@@ -20,7 +20,7 @@ for (const width of [320, 390, 836, 1440]) {
     });
     await page.goto('/');
     await expect(page.locator('#dashboard-view-overview > .dashboard-view-heading')).toHaveCount(0);
-    await expect(page.locator('.hero-main h1')).toContainText('Sleep debt');
+    await expect(page.locator('.hero-main h1')).toContainText('Sleep Debt');
     const overview = page.locator('#dashboard-view-overview');
     const order = await overview.locator(':scope > .hero, :scope > #training-plan, :scope > #health-overview').evaluateAll(
       items => items.map(item => item.id || item.className),
@@ -77,10 +77,10 @@ test('Garmin insight remains visible while forecast is pending or unavailable', 
   await page.locator(weatherToggle).click();
   try {
     await expect(page.locator('.forecast')).toContainText('Učitavam prognozu');
-    await expect(page.locator('.hero-main h1')).toContainText('Sleep debt');
+    await expect(page.locator('.hero-main h1')).toContainText('Sleep Debt');
   } finally { release(); }
   await expect(page.locator('.forecast')).toContainText('Prognoza trenutačno nije dostupna');
-  await expect(page.locator('.hero-main h1')).toContainText('Sleep debt');
+  await expect(page.locator('.hero-main h1')).toContainText('Sleep Debt');
 });
 
 test('cached forecast identifies the last update and source', async ({page}) => {
@@ -229,4 +229,71 @@ test('daily signals ignore a delayed date and link to the matching Lab details',
   await expect(page.getByRole('tab', { name: 'Pregled', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('link', { name: 'Osobna baza HRV-a' }).click();
   await expect(page.locator('#lab-recovery-tab-baseline')).toHaveAttribute('aria-selected', 'true');
+});
+
+
+test('daily insight names the key signal, provides context and gates weekly and today links', async ({page}) => {
+  await mockDashboardApi(page);
+  await page.clock.setFixedTime(new Date(response.updatedAt));
+  const today = days[0].date;
+  const dateOffset = (day: string, offset: number) =>
+    new Date(Date.parse(day + 'T12:00:00Z') + offset * 86400000).toISOString().slice(0,10);
+  await page.route('**/api/dashboard**', route => {
+    const date = new URL(route.request().url()).searchParams.get('date')!;
+    const payload = dashboardPayload(date);
+    const n = payload.normalized;
+    Object.assign(n.sleepDebt, {debtSeconds:0});
+    if (date === today) {
+      Object.assign(n.sleep,{totalSeconds:25920,score:61});
+      Object.assign(n.recovery,{restingHeartRate:46,hrvLastNight:90,hrvStatus:'balanced'});
+      Object.assign(n.personalRecoveryBaseline,{
+        restingHeartRate:{current:46,median28d:42,delta:4,sampleDays:28},
+        sleep:{current:25920,median28d:24480,delta:1440,sampleDays:28},
+        hrv:{current:90,median28d:85,delta:5,sampleDays:28},
+      });
+    } else if (date === '2026-11-20') {
+      Object.assign(n.sleep,{totalSeconds:null,score:null});
+      Object.assign(n.recovery,{restingHeartRate:46,hrvLastNight:null,bodyBattery:null});
+      Object.assign(n.personalRecoveryBaseline,{restingHeartRate:{current:46,median28d:null,delta:null,sampleDays:3}});
+    } else {
+      Object.assign(n.sleep,{totalSeconds:null,score:null});
+      Object.assign(n.recovery,{restingHeartRate:null,hrvLastNight:null,bodyBattery:0});
+    }
+    n.recoveryTrends=[0,-1,-2,-3,-7,-8,-9,-10].slice(0,date===today?8:7).map(offset=>({
+      date:dateOffset(date,offset),hrv:90,restingHeartRate:44,bodyBattery:70,stress:20,
+    }));
+    return route.fulfill({json:payload});
+  });
+  await page.setViewportSize({width:320,height:850});
+  await page.goto('/#view-overview');
+  const title=page.locator('#today-interpretation'),copy=page.locator('#hero-executive-copy');
+  const weekly=page.getByRole('link',{name:'Pogledaj tjedni trend'}),checkIn=page.getByRole('link',{name:'Kako se osjećaš danas?'});
+  await expect(title).toHaveText('Puls u mirovanju je iznad osobne baze');
+  await expect(copy).toContainText('46 bpm, 4 bpm iznad osobnog medijana');
+  await expect(copy).toContainText('24 min dulje');
+  await expect(copy).toContainText('Garmin HRV označava kao „U ravnoteži”');
+  await expect(weekly).toBeVisible();
+  await expect(checkIn).toBeVisible();
+  await weekly.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#health-weekly-trends$/);
+  await expect(page.locator('.health-deep-dive')).toHaveAttribute('open','');
+  await expect(page.locator('#health-weekly-trends')).toBeVisible();
+  await page.goBack();
+  await page.setViewportSize({width:390,height:850});
+  await checkIn.click();
+  await expect(page).toHaveURL(/#daily-check-in$/);
+  await expect(page.locator('#journal-form')).toBeVisible();
+  await page.goBack();
+  const date=page.getByLabel('Datum pregleda');
+  await date.fill('2026-11-20');
+  await expect(title).toHaveText('Puls u mirovanju');
+  await expect(copy).toContainText('46 bpm, a osobni medijan pulsa još nije dostupan');
+  await expect(weekly).toBeHidden();
+  await expect(checkIn).toBeHidden();
+  await date.fill('2026-11-19');
+  await expect(title).toHaveText('Body Battery');
+  await expect(copy).toContainText('0/100');
+  await expect(weekly).toBeHidden();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

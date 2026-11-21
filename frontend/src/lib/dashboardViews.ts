@@ -76,6 +76,7 @@ const sectionViews: Record<string, ViewId> = {
   ...Object.fromEntries(nutritionSectionIds.map(id => [id, "nutrition" as const])),
   "daily-signals": "overview",
   "health-overview": "overview",
+  "health-weekly-trends": "overview",
   "daily-summary": "overview",
   "activity-goals": "overview",
   "training-plan": "overview",
