@@ -1,0 +1,36 @@
+{
+  "checks": {
+    "isolatedBuild": "PASS",
+    "pnpmCheck": "PASS",
+    "targetedPlaywright": 9,
+    "targetedPython": 4
+  },
+  "createdAt": "2026-11-21T01:10:16+01:00",
+  "frontendFilesSha256": {
+    "assets/charts-Ct-iYRtI.js": "6869901fadbb29ec6121fdb2a2a74253211a50610297b73a150e3af0e6f79178",
+    "assets/echarts-BMe-UQDq.js": "4f188738ac2008bd60b98592e193e573ae4bc5b111b901470251747e409192ae",
+    "assets/echarts-BPIxtr-6.js": "95e98ad0d7e154e88b40785231b2eb000c5d41e7dd63ac05545a58ee47a50e98",
+    "assets/echarts-BaQZWPmU.js": "164656cae6d368b621d2af8ed0f1291f3a95dfbd105550b6ea516503c819b241",
+    "assets/echarts-C6mjtOId.js": "cba8750992fc53e121c382672b8b737dcbfadd0e7e190a2d7d9121292e63245c",
+    "assets/echarts-CAQbB7el.js": "0bb4fba4f27d03e33b1a5e03429532980a1207afde57cfca9ef941077df7df2f",
+    "assets/echarts-CWngFfWh.js": "622e582d34adc8c003d47894404599d85c1a7a1cff34c042f51cd10f81a1af41",
+    "assets/echarts-D3MkLsME.js": "2926724d725616b66a4488f7d544717b9bb9960c5a786614df8110b3980e847b",
+    "assets/echarts-DcVcY0B6.js": "28d8eac636197cba5b9d2b01149dc4895b52cbc18c9b5bcc151af69f57165275",
+    "assets/echarts-DnjWSIxP.js": "c85560a5a4ae86d4051030b2c238fc2f17d773700e3612a7fef174049c117cec",
+    "assets/echarts-d3mXloho.js": "7204597a555abc1d77b50ad66ebff048719d0e53ddb7b2a7dc70f08ef2ab8f12",
+    "assets/index-BJwGLkw9.css": "67c68ef6dab7b3f3e41cf59bf218a6f58409056934fcd4b6f932d7de8ab37494",
+    "assets/index-gHSsrtvR.js": "62dec5775b2fd439b0d38f2eb8c1ac26c63f96e91d60d268e1ac8ac6064fee33",
+    "assets/rolldown-runtime-Bi-D_2cA.js": "7d48d4b615c3c358e8f680a9f3c18dbde02e565848e8986462f8259b8f7c7daa",
+    "icons/garmin-studio.svg": "056323d8df9170ee4bbcfa4c63188f98d01b236a8c8cb99b3769b1b086c5c857",
+    "icons/icon-192.png": "8b98ba6dadbcd54fcaaaedd9c39602edebcd55ba60d8d69ef63093b540d067e5",
+    "icons/icon-512.png": "ea251a1fca59dd61b45c7b4d83b9791a8bdfc54ca8c141f6edd95afb12a6e2bb",
+    "index.html": "7764bdc689d2258c56f29e63a73c8c5a4bfa8830df8f0cdc2606b4b0ae83fc60",
+    "manifest.webmanifest": "f72ee0fe42046752f5db756134ce9a411312ac332997fddd5daffe2ab9b9e0b9",
+    "service-worker.js": "1b1a51d7d8f6dd0334c8021918491f1ea06694550b55ade71d5d4ee3f68726cb"
+  },
+  "frontendZipSha256": "b79ee1cfe8febdeb285dfd355787649c46e499e01e2dfb21364eb95dec48ff06",
+  "migrationRequired": false,
+  "previousRelease": "GPS-20261121-section-links-01",
+  "releaseId": "GPS-20261121-bjelovar-forecast-01",
+  "sourceCommit": "8faeb9e63768b023dcea08f93e160329e0cf0a30"
+}

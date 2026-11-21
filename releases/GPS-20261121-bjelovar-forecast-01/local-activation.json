@@ -1,0 +1,13 @@
+{
+  "releaseId": "GPS-20261121-bjelovar-forecast-01",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T01:10:38.092904+01:00",
+  "sourceCommit": "8faeb9e63768b023dcea08f93e160329e0cf0a30",
+  "manifestSha256": "2509deff1dcf7efd372975226e797dedb73f9cc854db98f6f5717d46f13cd8b4",
+  "pid": 24780,
+  "port": 8787,
+  "verifiedFrontendFiles": 20,
+  "verifiedSqliteTables": 36,
+  "productionChromiumSmoke": "PASS (live forecast, simulated Garmin)",
+  "forecastDays": 7
+}

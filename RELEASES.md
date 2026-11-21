@@ -142,3 +142,7 @@ Povećana je čitljivost kartica i grafikona u četiri glavna prikaza. Tehnički
 ## GPS-20261121-section-links-01
 
 Poveznice u traci Sekcije prikazuju nazive bez numeracije. Chromium je na aktivnoj verziji provjerio nazive i skok na sekciju. [Manifest](releases/GPS-20261121-section-links-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-section-links-01/local-activation.json).
+
+## GPS-20261121-bjelovar-forecast-01
+
+U Pregledu je aktivirana sedmodnevna prognoza za Bjelovar uz osobni uvid. Chromium je potvrdio sedam dana iz produkcijskog API-ja. [Zapis aktivacije](releases/GPS-20261121-bjelovar-forecast-01/local-activation.json).
