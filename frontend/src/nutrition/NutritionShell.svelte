@@ -43,6 +43,8 @@
  let mealTrigger=$state<HTMLButtonElement>();
  let profileDetails=$state<HTMLDetailsElement>();
  let logError=$state('');
+ let logSourceError=$state('');
+ let logSourceField=$state<HTMLSelectElement>();
  const isDailyView=$derived(view==='overview'||view==='diary');
  const planStatusLabels:Record<string,string>={planned:'Planirano',prepared:'Pripremljeno u planu',
    consumed:'Označeno konzumirano u planu',skipped:'Preskočeno u planu'};
@@ -294,6 +296,7 @@
    const portion=source&&'portionId' in source?source:null;
    const plan=source&&'recipe_version_id' in source?source:null;
    logError='';
+   logSourceError='';
    logKind=portion?'portion':plan?'recipe':'food';
    logRecipeVersion=plan?{id:plan.recipe_version_id,name:plan.name}:null;
    logSource=portion?.portionId??plan?.recipe_version_id??'';
@@ -302,7 +305,11 @@
    logConsume=false;
    const revision=contextRevision;
    await tick();
-   if(active&&isDailyView&&revision===contextRevision&&!mealDialog.open)mealDialog.showModal();
+   if(active&&isDailyView&&revision===contextRevision&&!mealDialog.open){
+     // Some browsers do not focus a button when clicked. Establish the modal's return target.
+     if (!source) mealTrigger?.focus({preventScroll:true});
+     mealDialog.showModal();
+   }
  }
  function openLinkedMeal(source:{portionId:string}|PlanEntry){
    const selectedDate='entry_date' in source?source.entry_date:date;
@@ -318,7 +325,16 @@
  }
  async function log(e:SubmitEvent){
    e.preventDefault();
+   const form=e.currentTarget as HTMLFormElement;
    logError='';
+   if (!logSourceField?.value) {
+     logSourceError=logKind==='portion'?'Odaberi gotovu porciju.':logKind==='recipe'?'Odaberi recept.':'Odaberi namirnicu.';
+     await tick();
+     logSourceField?.focus();
+     return;
+   }
+   logSourceError='';
+   if (!form.reportValidity()) return;
    let saved=false;
    await action(
      ()=>api('/diary/entries','POST',{date,meal:logMeal,kind:logKind,sourceId:logSource,quantity:logQuantity,consumeInventory:logConsume}),
@@ -864,7 +880,37 @@
    oncancel={(event)=>{if(busy)event.preventDefault()}} aria-labelledby="nutrition-meal-dialog-title">
    <h3 id="nutrition-meal-dialog-title">Dodaj obrok</h3>
    <p class="quiet">Datum unosa · {date}</p>
-   <form class="nutrition-form" onsubmit={log}><div class="nutrition-fields"><label>Vrsta<select bind:value={logKind} onchange={()=>{logSource='';logRecipeVersion=null;logConsume=false}}><option value="food">Namirnica</option><option value="recipe">Recept · samo evidencija</option><option value="portion">Gotova porcija · potrošnja</option></select></label><label>Odaberi<select required bind:value={logSource}><option value="">Odaberi</option>{#each options as o}<option value={o.id}>{o.name}</option>{/each}</select></label><label>Količina · {options.find(o=>o.id===logSource)?.unit??'jedinica'}<input required inputmode="decimal" bind:value={logQuantity}/></label><label>Obrok<select bind:value={logMeal}>{#each Object.entries(mealLabels) as [k,l]}<option value={k}>{l}</option>{/each}</select></label></div>{#if logKind==='food'}<label class="nutrition-check"><input type="checkbox" bind:checked={logConsume}/>Potroši iz inventara prema FEFO redoslijedu</label>{/if} {#if selectedPortion}
+   <form class="nutrition-form" novalidate onsubmit={log}>
+   <div class="nutrition-fields">
+     <label>Vrsta
+       <select bind:value={logKind} onchange={()=>{logSource='';logRecipeVersion=null;logConsume=false;logSourceError=''}}>
+         <option value="food">Namirnica</option>
+         <option value="recipe">Recept · samo evidencija</option>
+         <option value="portion">Gotova porcija · potrošnja</option>
+       </select>
+     </label>
+     <div>
+       <label>Odaberi
+         <select required bind:this={logSourceField} bind:value={logSource}
+           aria-invalid={logSourceError?'true':undefined}
+           aria-describedby={logSourceError?'meal-source-error':undefined}
+           onchange={()=>{logSourceError=''}}>
+           <option value="">Odaberi</option>
+           {#each options as o}<option value={o.id}>{o.name}</option>{/each}
+         </select>
+       </label>
+       {#if logSourceError}<p class="error meal-source-error" id="meal-source-error" role="alert">{logSourceError}</p>{/if}
+     </div>
+     <label>Količina · {options.find(o=>o.id===logSource)?.unit??'jedinica'}
+       <input required inputmode="decimal" bind:value={logQuantity}/>
+     </label>
+     <label>Obrok
+       <select bind:value={logMeal}>{#each Object.entries(mealLabels) as [k,l]}<option value={k}>{l}</option>{/each}</select>
+     </label>
+   </div>
+   {#if logKind==='food'}
+     <label class="nutrition-check"><input type="checkbox" bind:checked={logConsume}/>Potroši iz inventara prema FEFO redoslijedu</label>
+   {/if} {#if selectedPortion}
    <p class="quiet">Raspoloživo {fmt(selectedPortion.quantity,3)} porcija na {date}.
    {#if portionQuantity>0 && portionQuantity<=Number(selectedPortion.quantity)}
      Nakon upisa ostat će {fmt(Number(selectedPortion.quantity)-portionQuantity,3)} porcija.

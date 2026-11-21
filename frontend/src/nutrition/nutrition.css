@@ -195,3 +195,6 @@
  .nutrition-week-picker .btn{font-size:var(--text-detail)}
  .nutrition #nutrition-shopping-builder{scroll-margin-top:174px}
 }
+
+.nutrition-dialog select[aria-invalid="true"] { border-color: var(--rose); }
+.nutrition-dialog .meal-source-error { margin: .35rem 0 0; font-size: var(--text-detail); }

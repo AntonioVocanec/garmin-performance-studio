@@ -354,3 +354,107 @@ test('scheduled preparation keeps its recipe version and only cooking changes st
     expect.objectContaining({name:name+' · sastojak',quantity:'35'}),
   ]));
 });
+
+
+test('meal dialog validates each source in Croatian and preserves successful logging', async ({ page, request }, info) => {
+  const token = crypto.randomUUID().slice(0,8);
+  const post = async (path: string, data: object) => {
+    const response = await request.post('/api/nutrition/' + path, {data,headers:{'Idempotency-Key':crypto.randomUUID()}});
+    expect(response.ok(), await response.text()).toBeTruthy();
+    return (await response.json()).data;
+  };
+  const food = await post('foods',{name:'Testna namirnica '+token,source:'Izmišljena deklaracija',nutrients:{kcal:'400'}});
+  const recipe = await post('recipes',{name:'Testni recept '+token,portions:'2',minutes:10,
+    ingredients:[{foodId:food.id,quantity:'100'}],steps:['Pripremi probnu namirnicu.']});
+  await post('inventory/receipts',{foodId:food.id,quantity:'200',location:'pantry',expiresOn:'2099-12-01'});
+
+  const browserErrors: string[] = [];
+  const apiErrors: string[] = [];
+  page.on('pageerror', error => browserErrors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()); });
+  page.on('response', response => {
+    const path = new URL(response.url()).pathname;
+    if (path.startsWith('/api/nutrition/') && response.status() >= 400) apiErrors.push(path + ' ' + response.status());
+  });
+  await mockDashboardApi(page);
+  await page.route('**/api/nutrition/energy?**', route => route.fulfill({json:{ok:true,data:{
+    date:new URL(route.request().url()).searchParams.get('date'),status:'unavailable',totalCalories:null,
+  }}}));
+  await page.goto('/#nutrition-prep');
+  await page.getByRole('combobox',{name:'Recept',exact:true}).selectOption(recipe.versionId);
+  await page.getByLabel('Porcije',{exact:true}).fill('2');
+  await page.getByLabel('Rok gotovog jela',{exact:true}).fill('2099-11-16');
+  await page.getByRole('button',{name:'Provjeri pripremu',exact:true}).click();
+  await page.getByRole('button',{name:'Potvrdi kuhanje i potrošnju sastojaka',exact:true}).click();
+  await expect(page.locator('.nutrition').getByRole('status')).toContainText('Kuhanje je potvrđeno');
+  const lots = (await (await request.get('/api/nutrition/inventory')).json()).data;
+  const portion = lots.find((lot: {name:string}) => lot.name === recipe.name);
+  expect(portion?.id).toBeTruthy();
+
+  const sent: unknown[] = [];
+  page.on('request', req => {
+    if (req.method()==='POST' && new URL(req.url()).pathname==='/api/nutrition/diary/entries') sent.push(req.postDataJSON());
+  });
+  await openNutritionSection(page,'overview');
+  const trigger = page.getByRole('button',{name:'Evidentiraj obrok'});
+  const dialog = page.getByRole('dialog',{name:'Dodaj obrok'});
+  const kind = dialog.getByRole('combobox',{name:'Vrsta'});
+  const source = dialog.getByRole('combobox',{name:'Odaberi',exact:true});
+  const submit = dialog.getByRole('button',{name:'Potvrdi unos'});
+  const error = dialog.locator('#meal-source-error');
+  const date = await page.locator('#date').inputValue();
+  const diaryCount = async () => (await (await request.get('/api/nutrition/diary?date='+date)).json()).data.entries.length;
+  const initial = await diaryCount();
+  const cases = [
+    ['food', food.id, 'Odaberi namirnicu.'],
+    ['recipe', recipe.versionId, 'Odaberi recept.'],
+    ['portion', portion.id, 'Odaberi gotovu porciju.'],
+  ];
+  const locale = test.info().project.use.locale ?? 'en-US';
+  await expect.poll(() => page.evaluate(() => navigator.language)).toBe(locale);
+  for (const width of [390,768,1440]) {
+    await page.setViewportSize({width,height:900});
+    await trigger.click();
+    await expect(dialog).toBeVisible();
+    await submit.press('Enter');
+    await expect(source).toBeFocused();
+    await expect(source).toHaveAccessibleDescription('Odaberi namirnicu.');
+    await expect(error).toBeVisible();
+    await expect(source).toHaveAttribute('aria-invalid','true');
+    expect(await dialog.evaluate(d => d.getBoundingClientRect().right <= window.innerWidth)).toBe(true);
+    if (width===390) {
+      await dialog.getByLabel(/Količina ·/).clear();
+      await submit.press('Enter');
+      await expect(source).toBeFocused();
+      await dialog.screenshot({path:info.outputPath('qa-001-validacija.png')});
+    }
+    await dialog.getByRole('button',{name:'Odustani'}).click();
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+  }
+  expect(sent).toHaveLength(0);
+  expect(await diaryCount()).toBe(initial);
+  for (const [index,[type,id,message]] of cases.entries()) {
+    await trigger.click();
+    await expect(error).toBeHidden();
+    await kind.selectOption(type);
+    await submit.press('Enter');
+    await expect(source).toBeFocused();
+    await expect(source).toHaveAccessibleDescription(message);
+    expect(sent).toHaveLength(index);
+    await source.selectOption(id);
+    await expect(error).toBeHidden();
+    const amount=dialog.getByLabel(/Količina ·/);
+    await amount.clear();
+    await submit.click();
+    await expect(amount).toBeFocused();
+    expect(sent).toHaveLength(index);
+    await amount.fill('1');
+    await submit.click();
+    await expect(dialog).toBeHidden();
+    expect(sent).toHaveLength(index+1);
+    expect(await diaryCount()).toBe(initial+index+1);
+  }
+  expect(browserErrors).toEqual([]);
+  expect(apiErrors).toEqual([]);
+});
