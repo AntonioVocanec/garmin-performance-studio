@@ -150,3 +150,7 @@ U Pregledu je aktivirana sedmodnevna prognoza za Bjelovar uz osobni uvid. Chromi
 ## GPS-20261121-weather-runna-01
 
 Prognoza za Bjelovar prikazuje temperaturu, oborine i vjetar po terminima. Prelazak na dan otvara oblačić s Runna planom za taj datum. Prikaz je provjeren u Chromiumu na portu 8787 uz stvarnu prognozu i simulirani trening. [Manifest](releases/GPS-20261121-weather-runna-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-weather-runna-01/local-activation.json).
+
+## GPS-20261121-weather-tooltip-01
+
+Runna oblačić u prognozi prati izgled oblačića na trend grafovima i nestaje kad pokazivač napusti dan. Chromium je na portu 8787 potvrdio izgled i zatvaranje uz stvarnu prognozu i simulirani Runna raspored. [Manifest](releases/GPS-20261121-weather-tooltip-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-weather-tooltip-01/local-activation.json).

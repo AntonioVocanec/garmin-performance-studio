@@ -1,0 +1,13 @@
+{
+  "databaseBackupSha256": "5ffb3374f98b17d566949fa653b80545a65651fe6122fca624f9a8c61337f442",
+  "manifestSha256": "5c55d0a929479ee784490833f8b9780b004d22cac1e4fbbe9c38ca9641cd40ad",
+  "pid": 36348,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS (live forecast, simulated Runna and Garmin, tooltip style and pointer leave)",
+  "releaseId": "GPS-20261121-weather-tooltip-01",
+  "sourceCommit": "47bd7c17e742ea29e089a496832ec19dc45974cd",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T10:10:24+01:00",
+  "verifiedFrontendFiles": 20,
+  "verifiedSqliteTables": 36
+}

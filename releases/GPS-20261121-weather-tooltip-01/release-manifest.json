@@ -1,0 +1,39 @@
+{
+  "checks": {
+    "isolatedBuild": "PASS",
+    "pnpmCheck": "PASS",
+    "targetedPlaywright": 8
+  },
+  "createdAt": "2026-11-21T10:10:24+01:00",
+  "frontendFilesSha256": {
+    "assets/charts-Ct-iYRtI.js": "6869901fadbb29ec6121fdb2a2a74253211a50610297b73a150e3af0e6f79178",
+    "assets/echarts-BMe-UQDq.js": "4f188738ac2008bd60b98592e193e573ae4bc5b111b901470251747e409192ae",
+    "assets/echarts-BPIxtr-6.js": "95e98ad0d7e154e88b40785231b2eb000c5d41e7dd63ac05545a58ee47a50e98",
+    "assets/echarts-BaQZWPmU.js": "164656cae6d368b621d2af8ed0f1291f3a95dfbd105550b6ea516503c819b241",
+    "assets/echarts-C6mjtOId.js": "cba8750992fc53e121c382672b8b737dcbfadd0e7e190a2d7d9121292e63245c",
+    "assets/echarts-CAQbB7el.js": "0bb4fba4f27d03e33b1a5e03429532980a1207afde57cfca9ef941077df7df2f",
+    "assets/echarts-CWngFfWh.js": "622e582d34adc8c003d47894404599d85c1a7a1cff34c042f51cd10f81a1af41",
+    "assets/echarts-D3MkLsME.js": "2926724d725616b66a4488f7d544717b9bb9960c5a786614df8110b3980e847b",
+    "assets/echarts-DcVcY0B6.js": "28d8eac636197cba5b9d2b01149dc4895b52cbc18c9b5bcc151af69f57165275",
+    "assets/echarts-DnjWSIxP.js": "c85560a5a4ae86d4051030b2c238fc2f17d773700e3612a7fef174049c117cec",
+    "assets/echarts-d3mXloho.js": "7204597a555abc1d77b50ad66ebff048719d0e53ddb7b2a7dc70f08ef2ab8f12",
+    "assets/index-BIef1458.css": "7cc8c2b7228ffade0d3f7bc7a24476855072efbe0c23374e87d939837a6b6be4",
+    "assets/index-DhflvYeu.js": "9dd5355146310b926b0d2d20a598e4bc6333840fc6c0a549dc002c705e597877",
+    "assets/rolldown-runtime-Bi-D_2cA.js": "7d48d4b615c3c358e8f680a9f3c18dbde02e565848e8986462f8259b8f7c7daa",
+    "icons/garmin-studio.svg": "056323d8df9170ee4bbcfa4c63188f98d01b236a8c8cb99b3769b1b086c5c857",
+    "icons/icon-192.png": "8b98ba6dadbcd54fcaaaedd9c39602edebcd55ba60d8d69ef63093b540d067e5",
+    "icons/icon-512.png": "ea251a1fca59dd61b45c7b4d83b9791a8bdfc54ca8c141f6edd95afb12a6e2bb",
+    "index.html": "f3f32041fe7a88e2b0df4848b6cdc81bfb06963e0894b7dd769c7886f359aaf3",
+    "manifest.webmanifest": "f72ee0fe42046752f5db756134ce9a411312ac332997fddd5daffe2ab9b9e0b9",
+    "service-worker.js": "1b1a51d7d8f6dd0334c8021918491f1ea06694550b55ade71d5d4ee3f68726cb"
+  },
+  "frontendZipSha256": "14e9b58b284968c0ecd15c63921aa4f9d19322e23725394c73c642d622148801",
+  "migrationRequired": false,
+  "previousRelease": "GPS-20261121-weather-runna-01",
+  "releaseId": "GPS-20261121-weather-tooltip-01",
+  "sourceCommit": "47bd7c17e742ea29e089a496832ec19dc45974cd",
+  "sourceFilesSha256": {
+    "frontend/src/WeatherForecast.svelte": "cc3ed0d629208243168599e37fdde60c272f7cec75f2c9c1b0ae688d7762914a",
+    "tests/e2e/weather.spec.ts": "41414c30bd88934fc90c1005c62d831d79afa86ef903abf1966bfaa0e49ac4f4"
+  }
+}
