@@ -170,3 +170,7 @@ Pregled sažima doprinose oporavku, ističe tjedne usporedbe i prikazuje čitlji
 ## GPS-20261121-daily-insight-01
 
 Dnevni uvid imenuje glavni signal i povezuje ga s dostupnim mjerenjima. Poveznice na tjedni trend i check-in ovise o pokrivenosti i odabranom datumu. [Manifest](releases/GPS-20261121-daily-insight-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-daily-insight-01/local-activation.json).
+
+## GPS-20261121-meal-validation-01
+
+Obrazac Dodaj obrok prikazuje hrvatsku poruku uz prazan odabir namirnice, recepta ili gotove porcije. Na portu 8787 potvrđeni su poruka na hrvatskom, fokus polja i blokada praznog unosa. [Manifest](releases/GPS-20261121-meal-validation-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-meal-validation-01/local-activation.json).

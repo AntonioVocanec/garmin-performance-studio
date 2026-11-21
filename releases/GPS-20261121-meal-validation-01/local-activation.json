@@ -1,0 +1,16 @@
+{
+  "databaseBackupSha256": "775e15980d883862ce8e770f4699260419e940c801a8319bd176766b1087fb0b",
+  "databaseVerification": {
+    "timestampOnlyUpdates": [],
+    "verifiedTables": 36
+  },
+  "manifestSha256": "6f10623afa128c4a99062b95052a386337a3ef0a0ae5efbb10258cf13f6834f6",
+  "pid": 35792,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS: Croatian validation and focus restoration, en-US and 390 px, simulated API with zero writes",
+  "releaseId": "GPS-20261121-meal-validation-01",
+  "sourceCommit": "7cfd40479767a2108cb0b7889726701d5d7a038f",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T12:33:31+01:00",
+  "verifiedFrontendFiles": 20
+}
