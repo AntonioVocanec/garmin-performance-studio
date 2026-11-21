@@ -1,0 +1,16 @@
+{
+  "databaseBackupSha256": "18b7cc54d9cf7b00fee9061ba1b2d7bc2e2ec5ed86c502397d7c2471862cd88d",
+  "databaseVerification": {
+    "timestampOnlyUpdates": [],
+    "verifiedTables": 36
+  },
+  "manifestSha256": "3c2e6d3af83f64c5a88aa1b0ed97bb0bd1698c03ce8486a1ba7c22b2754f5dd0",
+  "pid": 40696,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS: daily insight, date changes, missing baseline, zero and links at 320 and 390 px with simulated data",
+  "releaseId": "GPS-20261121-daily-insight-01",
+  "sourceCommit": "998d1d5af735180d41ee58e3325247a5a53fb7f6",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T11:37:00+01:00",
+  "verifiedFrontendFiles": 20
+}
