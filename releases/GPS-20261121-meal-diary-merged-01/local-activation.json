@@ -1,0 +1,16 @@
+{
+  "databaseBackupSha256": "50a5a061633524901346ab51bad1806b2b9f956e03699c7cf44d5440016794cc",
+  "databaseVerification": {
+    "timestampOnlyUpdates": [],
+    "verifiedTables": 36
+  },
+  "manifestSha256": "4c2466a41ea4a93e45a89f9f05e677b8a3ba25be1c5c32b8006fe329ccec07aa",
+  "pid": 25644,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS: merged diary, legacy URL, meal shortcuts, localized validation and focus at 390 and 1440 px with simulated API",
+  "releaseId": "GPS-20261121-meal-diary-merged-01",
+  "sourceCommit": "d29bfacbdc4d9f0d5e2d0e11ce64a7ee9d85d254",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T16:18:13+01:00",
+  "verifiedFrontendFiles": 20
+}

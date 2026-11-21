@@ -174,3 +174,7 @@ Dnevni uvid imenuje glavni signal i povezuje ga s dostupnim mjerenjima. Poveznic
 ## GPS-20261121-meal-validation-01
 
 Obrazac Dodaj obrok prikazuje hrvatsku poruku uz prazan odabir namirnice, recepta ili gotove porcije. Na portu 8787 potvrđeni su poruka na hrvatskom, fokus polja i blokada praznog unosa. [Manifest](releases/GPS-20261121-meal-validation-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-meal-validation-01/local-activation.json).
+
+## GPS-20261121-meal-diary-merged-01
+
+Prehrana spaja pregled i dnevnik u Moj dan. Doručak, ručak, međuobrok i večera imaju zaseban brzi unos. Stari URL dnevnika potvrđen je na portu 8787 pri 390 i 1440 px. [Manifest](releases/GPS-20261121-meal-diary-merged-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-meal-diary-merged-01/local-activation.json).
