@@ -162,3 +162,7 @@ Pregled prvo prikazuje dnevni uvid, oporavak, san, status treninga i Runna plan.
 ## GPS-20261121-overview-redesign-01
 
 Pregled organizira četiri dnevna signala, Runna plan, vremenski sažetak, status treninga, doprinose oporavku i ciljeve aktivnosti. Prikaz je provjeren na portu 8787 pri 390 i 1440 px. [Manifest](releases/GPS-20261121-overview-redesign-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-overview-redesign-01/local-activation.json).
+
+## GPS-20261121-overview-polish-01
+
+Pregled sažima doprinose oporavku, ističe tjedne usporedbe i prikazuje čitljivije grafikone prognoze. Na aktivnoj verziji provjerene su širine od 390 i 1440 px. [Manifest](releases/GPS-20261121-overview-polish-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-overview-polish-01/local-activation.json).
