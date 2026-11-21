@@ -106,6 +106,7 @@
     const receiveSchedule = (event: Event) => readSchedule((event as CustomEvent<Record<string, unknown>>).detail);
     readSchedule(dashboardSnapshot);
     window.addEventListener('analytics:dashboard', receiveSchedule);
+    const disclosure = document.getElementById('training-weather') as HTMLDetailsElement | null;
     const controller = new AbortController();
     let busy = false;
     let requestedDay = '';
@@ -138,22 +139,30 @@
         if (!controller.signal.aborted && today !== localDate.format(new Date())) void refresh();
       }
     }
-    const visible = () => { if (!document.hidden) void refresh(); };
-    void refresh();
+    const refreshIfOpen = () => {
+      if (disclosure?.open && !document.hidden) void refresh();
+    };
+    const handleToggle = () => {
+      if (disclosure?.open) refreshIfOpen();
+      else hidePlan();
+    };
+    disclosure?.addEventListener('toggle', handleToggle);
+    refreshIfOpen();
     let timer: number;
     function scheduleMinute() {
       timer = window.setTimeout(() => {
-        visible();
+        refreshIfOpen();
         scheduleMinute();
       }, 60_000 - Date.now() % 60_000);
     }
     scheduleMinute();
-    document.addEventListener('visibilitychange', visible);
+    document.addEventListener('visibilitychange', refreshIfOpen);
     return () => {
       controller.abort();
       window.removeEventListener('analytics:dashboard', receiveSchedule);
       clearTimeout(timer);
-      document.removeEventListener('visibilitychange', visible);
+      disclosure?.removeEventListener('toggle', handleToggle);
+      document.removeEventListener('visibilitychange', refreshIfOpen);
     };
   });
 </script>
@@ -161,7 +170,7 @@
 <svelte:window onresize={hidePlan} />
 
 <section class="forecast" aria-labelledby="forecast-heading">
-  <h2 id="forecast-heading">Bjelovar · prognoza za 7 dana
+  <h2 id="forecast-heading">Prognoza za Bjelovar
     {#if forecast}<small>{rangeDate.format(noon(forecast.days[0].date))} – {rangeDate.format(noon(forecast.days[6].date))}</small>{/if}
   </h2>
   {#if forecast}
@@ -271,7 +280,7 @@
 </section>
 
 <style>
-  .forecast { margin-top: 1rem; padding-top: .85rem; border-top: 1px solid var(--line); min-width: 0; }
+  .forecast { min-width: 0; }
   h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; margin: 0 0 .6rem; font-size: 1rem; }
   small, footer { font-size: var(--text-caption); font-weight: 500; color: var(--muted); }
   .day-strip { position: relative; }
