@@ -1,0 +1,14 @@
+{
+  "databaseBackupSha256": "8a9633ea21b33b85178acba35bdda79fed64547380bd5621adb39d2dd5d1a3ed",
+  "databaseVerification": "PASS: refreshed timestamps only in five integration tables",
+  "manifestSha256": "ab4c06f2a182232750fed79ff48fa27744f9e8e53aa8848568374f83675bcca1",
+  "pid": 28480,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS: priorities, disclosure and live forecast loaded on demand",
+  "releaseId": "GPS-20261121-overview-priorities-01",
+  "sourceCommit": "0e81ac57ecb0c22958589c296da5b8d1ff83fdde",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T10:53:03+01:00",
+  "verifiedFrontendFiles": 20,
+  "verifiedSqliteTables": 36
+}
