@@ -1,0 +1,14 @@
+{
+  "databaseBackupSha256": "520c469f50a36c2d8391a3076ae48f1f6dd72ff71ed6aa9db32f65ab7b4f7fdc",
+  "manifestSha256": "996311cafe263b25b98d5e30854ca7c2f37c8021abb894be399246f7464a38e9",
+  "pid": 9680,
+  "port": 8787,
+  "previousLocalIndexSha256": "16409532334d813926ade828a085f4bdb092822b3f3d262b6082fd577733ecbf",
+  "productionChromiumSmoke": "PASS (live forecast, simulated Runna and Garmin)",
+  "releaseId": "GPS-20261121-weather-runna-01",
+  "sourceCommit": "6906cebb570e8abad9e0b50467fbbd94bc53a267",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T10:03:49+01:00",
+  "verifiedFrontendFiles": 20,
+  "verifiedSqliteTables": 36
+}

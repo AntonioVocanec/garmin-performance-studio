@@ -146,3 +146,7 @@ Poveznice u traci Sekcije prikazuju nazive bez numeracije. Chromium je na aktivn
 ## GPS-20261121-bjelovar-forecast-01
 
 U Pregledu je aktivirana sedmodnevna prognoza za Bjelovar uz osobni uvid. Chromium je potvrdio sedam dana iz produkcijskog API-ja. [Zapis aktivacije](releases/GPS-20261121-bjelovar-forecast-01/local-activation.json).
+
+## GPS-20261121-weather-runna-01
+
+Prognoza za Bjelovar prikazuje temperaturu, oborine i vjetar po terminima. Prelazak na dan otvara oblačić s Runna planom za taj datum. Prikaz je provjeren u Chromiumu na portu 8787 uz stvarnu prognozu i simulirani trening. [Manifest](releases/GPS-20261121-weather-runna-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-weather-runna-01/local-activation.json).
