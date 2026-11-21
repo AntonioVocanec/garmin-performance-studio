@@ -106,7 +106,24 @@
     const receiveSchedule = (event: Event) => readSchedule((event as CustomEvent<Record<string, unknown>>).detail);
     readSchedule(dashboardSnapshot);
     window.addEventListener('analytics:dashboard', receiveSchedule);
-    const disclosure = document.getElementById('training-weather') as HTMLDetailsElement | null;
+    const disclosure = document.getElementById('training-weather');
+    const toggle = document.getElementById('weather-toggle');
+    const summaryValue = document.getElementById('overview-weather-current');
+    const summaryContext = document.getElementById('overview-weather-context');
+
+    function updateSummary(data: Forecast | null) {
+      const observed = data?.current;
+      if (summaryValue) summaryValue.textContent = quantity(observed?.temp ?? null, ' °C');
+      if (!summaryContext) return;
+      const description = condition(observed?.code ?? null)?.[2];
+      const text = observed ? [
+        observed.daylight === 0 && (observed.code === 1 || observed.code === 2) ? 'Djelomice oblačno' : description,
+        observed.rain == null ? null : 'Oborine ' + quantity(observed.rain, ' %'),
+        observed.wind == null ? null : 'Vjetar ' + quantity(observed.wind, ' km/h'),
+        data?.stale ? 'Zadnja dostupna prognoza' : null,
+      ].filter(Boolean).join(' · ') : '';
+      summaryContext.textContent = text || 'Trenutačno vrijeme nije dostupno.';
+    }
     const controller = new AbortController();
     let busy = false;
     let requestedDay = '';
@@ -129,9 +146,11 @@
         const data: Forecast = await response.json();
         if (data.days?.length !== 7 || data.days[0].date !== today) throw new Error();
         forecast = data;
+        updateSummary(data);
         nextCheck = data.stale ? Date.now() + 300_000 : Date.parse(data.updatedAt) + 3_600_000;
       } catch {
         if (forecast) forecast = { ...forecast, stale: true };
+        updateSummary(forecast);
         nextCheck = Date.now() + 300_000;
       } finally {
         busy = false;
@@ -139,30 +158,32 @@
         if (!controller.signal.aborted && today !== localDate.format(new Date())) void refresh();
       }
     }
-    const refreshIfOpen = () => {
-      if (disclosure?.open && !document.hidden) void refresh();
-    };
+    const refreshWhenVisible = () => { if (!document.hidden) void refresh(); };
     const handleToggle = () => {
-      if (disclosure?.open) refreshIfOpen();
-      else hidePlan();
+      if (!disclosure || !toggle) return;
+      disclosure.hidden = !disclosure.hidden;
+      toggle.setAttribute('aria-expanded', String(!disclosure.hidden));
+      toggle.textContent = disclosure.hidden ? 'Otvori prognozu za 7 dana' : 'Sklopi prognozu';
+      if (disclosure.hidden) hidePlan();
+      else refreshWhenVisible();
     };
-    disclosure?.addEventListener('toggle', handleToggle);
-    refreshIfOpen();
+    toggle?.addEventListener('click', handleToggle);
+    refreshWhenVisible();
     let timer: number;
     function scheduleMinute() {
       timer = window.setTimeout(() => {
-        refreshIfOpen();
+        refreshWhenVisible();
         scheduleMinute();
       }, 60_000 - Date.now() % 60_000);
     }
     scheduleMinute();
-    document.addEventListener('visibilitychange', refreshIfOpen);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       controller.abort();
       window.removeEventListener('analytics:dashboard', receiveSchedule);
       clearTimeout(timer);
-      disclosure?.removeEventListener('toggle', handleToggle);
-      document.removeEventListener('visibilitychange', refreshIfOpen);
+      toggle?.removeEventListener('click', handleToggle);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
   });
 </script>

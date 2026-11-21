@@ -6,9 +6,9 @@ const days = Array.from({ length: 7 }, (_, i) => ({
   low: i === 1 ? null : 0, high: 6, rainChance: i === 1 ? null : 0,
 }));
 const response = { days, updatedAt: '2026-11-21T08:00:00+01:00', stale: false };
-const weatherToggle = '#training-weather > summary';
+const weatherToggle = '#weather-toggle';
 
-for (const width of [390, 836, 1440]) {
+for (const width of [320, 390, 836, 1440]) {
   test('one overview header and reachable weather days at ' + width, async ({ page }) => {
     await mockDashboardApi(page);
     await page.clock.setFixedTime(new Date(response.updatedAt));
@@ -26,14 +26,17 @@ for (const width of [390, 836, 1440]) {
       items => items.map(item => item.id || item.className),
     );
     expect(order).toEqual(['hero', 'training-plan', 'health-overview']);
-    const cards = overview.locator('.today-hero-card .today-hero-kicker');
-    await expect(cards).toHaveText(['OPORAVAK · GARMIN BODY BATTERY', 'SAN I HRV · OSOBNA BAZA', 'TRENING · GARMIN CONNECT']);
+    const cards = overview.locator('#daily-signals .today-hero-kicker');
+    await expect(cards).toHaveText(['San', 'Body Battery', 'Noćni HRV', 'Puls u mirovanju']);
+    const signalColumns = await page.locator('#daily-signals').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+    expect(signalColumns).toBe(width === 320 ? 1 : width === 1440 ? 4 : 2);
     const panel = page.locator('#training-plan .forecast');
     await expect(panel).toBeHidden();
-    await expect(page.locator('#training-weather')).not.toHaveAttribute('open', '');
-    expect(calls).toBe(0);
+    await expect(page.locator(weatherToggle)).toHaveAttribute('aria-expanded', 'false');
+    await expect.poll(() => calls).toBe(1);
     await page.locator(weatherToggle).focus();
     await page.keyboard.press('Enter');
+    await expect(page.locator(weatherToggle)).toHaveAttribute('aria-expanded', 'true');
     await expect(panel.getByRole('heading')).toContainText(/21\.\s*11\..*27\.\s*11\./);
     const items = panel.getByRole('listitem');
     await expect(items).toHaveCount(7);
@@ -43,7 +46,7 @@ for (const width of [390, 836, 1440]) {
     await expect(items.nth(1)).toContainText('Oborine —');
     const strip = panel.getByRole('region');
     await strip.focus();
-    if (width === 390) {
+    if (width <= 390) {
       await page.keyboard.press('ArrowRight');
       await expect.poll(() => strip.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
     }
@@ -181,4 +184,46 @@ test('shows the Runna plan for the hovered or focused forecast day', async ({ pa
   await expect(tip).toBeInViewport();
   await page.locator('.forecast h2').hover();
   await expect(tip).toBeHidden();
+});
+
+
+test('daily signals ignore a delayed date and link to the matching Lab details', async ({ page }) => {
+  await mockDashboardApi(page);
+  await page.clock.setFixedTime(new Date(response.updatedAt));
+  let release = () => {};
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/dashboard**', async route => {
+    const date = new URL(route.request().url()).searchParams.get('date')!;
+    const payload = dashboardPayload(date);
+    if (date === '2026-11-19') await gate;
+    if (date === '2026-11-20') {
+      Object.assign(payload.normalized.recovery, { bodyBattery: 0, hrvLastNight: null, restingHeartRate: null });
+      Object.assign(payload.normalized.sleep, { totalSeconds: null });
+      Object.assign(payload.normalized.runnaSchedule, { ok: false, message: 'Runna nije dostupna' });
+    }
+    await route.fulfill({ json: payload });
+  });
+  await page.goto('/#view-overview');
+  await expect(page.locator('#today-energy')).toHaveText('70');
+  const date = page.getByLabel('Datum pregleda');
+  try {
+    const delayed = page.waitForRequest(request => request.url().includes('/api/dashboard?') && request.url().includes('2026-11-19'));
+    await date.fill('2026-11-19');
+    await delayed;
+    await date.fill('2026-11-20');
+    await expect(page.locator('#today-energy')).toHaveText('0');
+  } finally { release(); }
+  for (const id of ['today-sleep-duration', 'today-hrv', 'today-rhr']) {
+    await expect(page.locator('#' + id)).toHaveText('—');
+  }
+  await expect(page.locator('#schedule')).toContainText('Runna nije dostupna');
+  await expect(page.locator('#schedule-context')).toContainText('aktualni raspored');
+  await page.getByRole('link', { name: 'Tijek dana' }).click();
+  await expect(page).toHaveURL(/#body-battery-day$/);
+  await expect(page.locator('#lab-recovery-tab-recovery')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#body-battery-day')).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('tab', { name: 'Pregled', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('link', { name: 'Osobna baza HRV-a' }).click();
+  await expect(page.locator('#lab-recovery-tab-baseline')).toHaveAttribute('aria-selected', 'true');
 });

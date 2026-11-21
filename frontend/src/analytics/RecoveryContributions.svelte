@@ -10,13 +10,18 @@
   return()=>{window.removeEventListener('analytics:dashboard',receive);document.getElementById('date')?.removeEventListener('change',change)};
  });
 </script>
-<details class="panel analytics-panel" id="recovery-contributions"><summary><strong>Što doprinosi današnjem oporavku?</strong></summary>
- <p>{data?.summary??'Doprinosi će se prikazati nakon učitavanja Garmin podataka.'}</p>
- <div class="analytics-grid">
+<section id="recovery-contributions" class="recovery-contribution-panel" aria-labelledby="recovery-contribution-title">
+ <h3 id="recovery-contribution-title">Što doprinosi današnjem oporavku?</h3>
+ <p class="quiet">{data?.summary??'Doprinosi će se prikazati nakon učitavanja Garmin podataka.'}</p>
+ <div class="recovery-contributions-grid">
   {#each data?.signals??[] as signal (signal.key)}
-   <article class="analytics-card">
-    <span class="analytics-tag">{signal.label}</span>
-    <strong>{display(signal.value,signal.unit)}</strong>
+   <details class="analytics-card recovery-contribution">
+    <summary>
+     <span class="contribution-label">{signal.label}</span>
+     <strong>{display(signal.value,signal.unit)}</strong>
+     <small>{signal.value === null ? 'Nema zapisa' : signal.expectedDays > 1 ? `${signal.sampleDays}/${signal.expectedDays} dana` : signal.partial ? 'Djelomično' : 'Zabilježeno'}</small>
+    </summary>
+    <div class="contribution-detail">
     <p>{signal.note}</p>
     {#if signal.baseline!==null}
      <p>Osobni medijan {display(signal.baseline,signal.unit)}{#if signal.delta!==null} · {signal.delta>0?'+':''}{display(signal.delta,signal.unit)}{/if} · {signal.baselineDays}/28 dana.</p>
@@ -30,8 +35,10 @@
     {:else if signal.partial}
      <p class="quiet">Djelomični podaci</p>
     {/if}
-   </article>
+     <p class="quiet">Datum · {signal.date}</p>
+    </div>
+   </details>
   {/each}
  </div>
  <p class="quiet">Svaki signal daje zaseban kontekst. Prikaz ne dodjeljuje novi rezultat spremnosti niti određuje intenzitet treninga.</p>
-</details>
+</section>

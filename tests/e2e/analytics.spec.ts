@@ -30,9 +30,13 @@ test('recovery cards show values and relevant coverage without technical metadat
   await route.fulfill({json:payload});
  });
  await page.goto('/');
- await page.locator('#recovery-contributions > summary').click();
+
  const panel=page.locator('#recovery-contributions');
- const cards=panel.getByRole('article');
+ const cards=panel.locator('.recovery-contribution');
+ await expect(cards.nth(1).locator('summary')).toContainText('0 h 0 min');
+ await expect(cards.nth(2).locator('summary')).toContainText('Nema zapisa');
+ await expect(cards.nth(0).locator('.contribution-detail')).toBeHidden();
+ for (const card of await cards.all()) await card.locator('summary').click();
  await expect(cards.nth(0)).toContainText('60 ms');
  await expect(cards.nth(0)).toContainText('6/28 dana');
  await expect(cards.nth(1)).toContainText('0 h 0 min');

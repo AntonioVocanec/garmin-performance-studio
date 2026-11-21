@@ -43,7 +43,7 @@ test("renders Garmin and Runna overview without browser errors", async ({ page }
   await expect(page.locator("#today-hrv")).toHaveText("64 ms");
   await expect(page.locator("#today-hrv-context")).toContainText("−2 ms prema medijanu 66 ms · 28/28 noći");
   await expect(page.locator("#daily-summary details")).not.toHaveAttribute("open", "");
-  await expect(page.locator("#activity-goals details")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#activity-goals .layout-3")).toBeVisible();
   await expect(page.locator("#health-overview .health-deep-dive")).not.toHaveAttribute("open", "");
   await expect(page.locator("#overview .snapshot-card")).toHaveCount(3);
   await expect(page.locator("#overview .snapshot-card").nth(0)).toContainText("Sleep Debt");
@@ -54,6 +54,10 @@ test("renders Garmin and Runna overview without browser errors", async ({ page }
   await expect(page.locator("#overview .snapshot-card").nth(2)).toHaveAttribute("href", "#training-plan");
   const scheduleRows = page.locator("#schedule .schedule-row");
   await expect(scheduleRows).toHaveCount(3);
+  await expect(scheduleRows.nth(0)).toBeVisible();
+  await expect(scheduleRows.nth(1)).toBeHidden();
+  await page.locator("#schedule .schedule-more > summary").click();
+  await expect(scheduleRows.nth(1)).toBeVisible();
   await expect(page.locator("#schedule .next-desc")).toHaveText("Lagano trčanje prema Runna planu.");
   await expect(page.locator("#schedule .next-desc")).not.toContainText("Easy effort");
   await page.locator("#schedule .next-run .run-info > summary").click();
@@ -63,11 +67,11 @@ test("renders Garmin and Runna overview without browser errors", async ({ page }
   await expect(scheduleRows.nth(1)).toHaveAttribute("data-zebra", "even");
   const scheduleRowBackgrounds = await scheduleRows.evaluateAll((rows) => rows.slice(0, 2).map((row) => getComputedStyle(row).backgroundColor));
   expect(scheduleRowBackgrounds[0]).not.toBe(scheduleRowBackgrounds[1]);
-  await expect(page.locator("#focus")).toHaveText("Osobni kontekst");
-  await expect(page.locator("#focus-signals .focus-signal")).toHaveCount(4);
-  await expect(page.locator("#focus-signals .focus-signal-icon svg")).toHaveCount(4);
-  await expect(page.locator("#focus-signals")).toContainText("Temp. kože");
-  await expect(page.locator("#focus-signals")).toContainText("0,2 °C");
+  await expect(page.locator("#today-rhr")).toContainText("bpm");
+  await page.locator("#health-overview .health-deep-dive > summary").click();
+  await expect(page.locator("#overview-skin-context")).toContainText("0,4 °C");
+  await page.locator('.health-skin-context a').click();
+  await expect(page).toHaveURL(/#skin-temperature$/);
   await showView(page, "Laboratorij");
   await expect(page.locator("#skin-temperature-current")).toHaveText("+0,4 °C");
   await expect(page.locator("#skin-temperature-median")).toHaveText("+0,2 °C");
@@ -426,19 +430,16 @@ test("quick navigation jumps to a section without covering its heading", async (
   await expect.poll(() => page.locator("#gear-overview").evaluate((section) => section.getBoundingClientRect().top)).toBeLessThan(150);
 });
 
-test("opens a collapsed overview disclosure from its quick link and direct URL", async ({ page }) => {
+test("shows daily activity from quick navigation and opens remaining metrics by direct URL", async ({ page }) => {
   await mockDashboardApi(page);
   await page.goto("/");
-  const activityDisclosure = page.locator("#activity-goals > details");
-  await expect(activityDisclosure).not.toHaveAttribute("open", "");
   await page.locator('.quick-nav-links a[href="#activity-goals"]').click();
-  await expect(activityDisclosure).toHaveAttribute("open", "");
+  await expect(page).toHaveURL(/#activity-goals$/);
   await expect(page.locator("#activity-goals .layout-3")).toBeVisible();
-
-  await page.goto("/#activity-goals");
+  await page.goto("/#daily-summary");
   await expect(page.getByRole("tab", { name: "Pregled" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#activity-goals > details")).toHaveAttribute("open", "");
-  await expect(page.locator("#activity-goals .layout-3")).toBeVisible();
+  await expect(page.locator("#daily-summary > details")).toHaveAttribute("open", "");
+  await expect(page.locator("#overview .snapshot-card").first()).toBeVisible();
 });
 
 test("keeps main dashboard tabs synchronized with browser history", async ({ page }) => {
@@ -628,7 +629,7 @@ test("FastAPI exposes a documented contract and rejects invalid journal data bef
 test("keeps the app shell available offline without caching Garmin or journal data", async ({ page }) => {
   await mockDashboardApi(page);
   await page.goto("/");
-  await expect(page.locator("#focus")).toHaveText("Osobni kontekst");
+  await expect(page.locator("#today-energy")).toHaveText("70");
   const workerRegistration = await page.evaluate(async () => {
     if (!("serviceWorker" in navigator)) return { supported: false };
     const registration = await navigator.serviceWorker.getRegistration();

@@ -23,27 +23,38 @@
   <section class="hero">
     <div class="hero-main"><div class="eyebrow">Pregled dana</div><h1 class="hero-executive-title" id="today-interpretation" aria-live="polite">Čekam dostupne zdravstvene signale.</h1><p id="hero-executive-copy">Sažetak će se osloniti na dostupne Garminove signale i tvoju osobnu bazu.</p><div class="meta hero-meta"><span id="range">Učitavam raspon…</span><span id="api-status" class="status"><i class="dot"></i>Spajam se</span><span id="last-updated">—</span></div>
     </div>
-    <aside class="hero-side" aria-label="Dnevni sažetak">
-      <div class="today-hero-grid">
-        <article class="today-hero-card today-energy-card">
-          <div class="today-hero-kicker">OPORAVAK · GARMIN BODY BATTERY</div>
-          <div class="today-energy-content"><div class="today-energy-ring" id="today-energy-ring" role="img" aria-label="Body Battery nije dostupna"><div><strong id="today-energy">—</strong><small>/100</small></div></div><div class="today-energy-copy"><span class="focus-label" id="focus">Osobni kontekst</span><div class="focus-context" id="focus-context"><div class="focus-signals" id="focus-signals"></div><div class="focus-baseline-note" id="focus-baseline-note">U odnosu na osobnu bazu</div></div></div></div>
-          <div class="today-hero-foot"><span id="today-energy-note">Čekam Garminov dnevni zapis.</span></div>
-        </article>
-        <article class="today-hero-card today-sleep-card">
-          <div class="today-hero-kicker">SAN I HRV · OSOBNA BAZA</div>
-          <div class="today-sleep-metric"><div><span>San</span><strong id="today-sleep-duration">—</strong><small id="today-sleep-context">Sleep Score —</small><small id="today-sleep-baseline">Osobni medijan nije dostupan.</small><div class="today-status-track"><i id="today-sleep-bar"></i></div></div><div><span>HRV tijekom noći</span><strong id="today-hrv">—</strong><small id="today-hrv-context">Usporedba čeka podatke.</small><div class="today-hrv-status" id="today-hrv-status">—</div></div></div>
-          <p class="today-baseline-note">Usporedba koristi medijan prethodnih 28 dana; broj dostupnih noći prikazan je uz metriku.</p>
-        </article>
-        <article class="today-hero-card today-training-card">
-          <div class="today-hero-kicker">TRENING · GARMIN CONNECT</div>
-          <strong class="today-training-status" id="today-training-status">—</strong>
-          <p class="today-training-context" id="today-training-context">Garminov status treninga za odabrani dan.</p>
-          <div class="today-training-facts"><div><span>ACWR</span><b id="today-acwr">—</b></div><div><span>Load Focus</span><b id="today-load-focus">—</b></div></div>
-          <a class="today-hero-link" href="#garmin-performance-profile">Detalji treninga <span aria-hidden="true">↗</span></a>
-        </article>
-      </div>
-    </aside>
+    <div class="today-hero-grid" id="daily-signals" aria-label="Dnevni signali">
+      <article class="today-hero-card today-sleep-card">
+        <h2 class="today-hero-kicker">San</h2>
+        <strong class="daily-signal-value" id="today-sleep-duration">—</strong>
+        <small id="today-sleep-context">Sleep Score —</small>
+        <small id="today-sleep-baseline">Osobni medijan nije dostupan.</small>
+        <div class="today-status-track"><i id="today-sleep-bar"></i></div>
+        <a class="today-hero-link" href="#sleep-recovery">Detalji sna <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="today-hero-card today-energy-card">
+        <h2 class="today-hero-kicker">Body Battery</h2>
+        <div class="daily-battery">
+          <span class="today-energy-ring" id="today-energy-ring" role="img" aria-label="Body Battery nije dostupna"></span>
+          <span><strong class="daily-signal-value" id="today-energy">—</strong> <small>/ 100</small></span>
+        </div>
+        <small id="today-energy-note">Čekam Garminov dnevni zapis.</small>
+        <a class="today-hero-link" href="#body-battery-day">Tijek dana <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="today-hero-card today-hrv-card">
+        <h2 class="today-hero-kicker">Noćni HRV</h2>
+        <strong class="daily-signal-value" id="today-hrv">—</strong>
+        <small id="today-hrv-context">Usporedba čeka podatke.</small>
+        <span class="today-hrv-status" id="today-hrv-status">—</span>
+        <a class="today-hero-link" href="#lab-recovery-panel-baseline">Osobna baza HRV-a <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="today-hero-card today-rhr-card">
+        <h2 class="today-hero-kicker">Puls u mirovanju</h2>
+        <strong class="daily-signal-value" id="today-rhr">—</strong>
+        <small id="today-rhr-context">Usporedba čeka podatke.</small>
+        <a class="today-hero-link" href="#lab-recovery-panel-baseline">Osobna baza pulsa <span aria-hidden="true">↗</span></a>
+      </article>
+    </div>
   </section>
 
   <section class="history-window-control" id="history-window-control" aria-labelledby="history-window-title">
@@ -91,22 +102,35 @@
 
   <section class="section" id="training-plan">
     <div class="section-head"><h2>Sljedeći trening</h2><span class="section-note" id="schedule-context">Runna</span></div>
-    <div class="panel schedule-panel" id="schedule"><div class="loading">Provjeravam trening plan…</div></div>
-    <details class="secondary-disclosure training-weather" id="training-weather">
-      <summary aria-controls="weather-root">
-        <span><strong>Vremenska prognoza</strong><small>Bjelovar · 7 dana</small></span>
-        <span class="weather-chevron" aria-hidden="true">⌄</span>
-      </summary>
-      <div id="weather-root"></div>
-    </details>
+    <div class="overview-training-grid">
+      <div class="panel schedule-panel" id="schedule"><div class="loading">Provjeravam trening plan…</div></div>
+      <div class="overview-training-aside">
+        <article class="today-hero-card weather-summary-card">
+          <h3 class="today-hero-kicker">Vrijeme · Bjelovar</h3>
+          <strong class="weather-current" id="overview-weather-current">—</strong>
+          <small id="overview-weather-context">Učitavam trenutačno vrijeme…</small>
+          <button type="button" class="btn weather-toggle" id="weather-toggle" aria-expanded="false" aria-controls="training-weather">Otvori prognozu za 7 dana</button>
+        </article>
+        <article class="today-hero-card today-training-card">
+          <div class="today-hero-kicker">Garmin status treninga</div>
+          <strong class="today-training-status" id="today-training-status">—</strong>
+          <p class="today-training-context" id="today-training-context">Garminov status treninga za odabrani dan.</p>
+          <div class="today-training-facts"><div><span>ACWR</span><b id="today-acwr">—</b></div><div><span>Load Focus</span><b id="today-load-focus">—</b></div></div>
+          <a class="today-hero-link" href="#garmin-performance-profile">Detalji treninga <span aria-hidden="true">↗</span></a>
+        </article>
+      </div>
+    </div>
+    <div class="panel training-weather" id="training-weather" hidden><div id="weather-root"></div></div>
   </section>
 
   <section class="section" id="health-overview">
-    <div class="section-head"><h2>Pregled zdravlja</h2><span class="section-note">Osobni dnevni pregled i tjedni trendovi · Garmin podaci</span></div>
+    <div class="section-head"><h2>Oporavak i zdravlje</h2><span class="section-note">Osobni dnevni pregled i tjedni trendovi · Garmin podaci</span></div>
+    <div id="recovery-root"></div>
     <details class="panel health-overview-panel health-deep-dive">
       <summary class="health-deep-summary"><span><span class="health-overview-kicker"><span class="health-pulse-dot"></span>DUBLJI ZDRAVSTVENI PREGLED</span><b id="health-overview-title">Učitavam zdravstvene signale…</b><small id="health-overview-summary">San, oporavak i kretanje na jednom mjestu.</small></span><span class="health-overview-coverage"><b id="health-overview-coverage">—</b><span>područja s dostupnim<br>zapisima</span></span></summary>
       <div class="health-pillars" id="health-pillars" aria-live="polite"></div>
       <div class="health-insight" id="health-insight"><span class="health-insight-icon" aria-hidden="true">✦</span><div><small>OSOBNI UVID</small><b id="health-insight-title">Učitavam kontekst…</b><p id="health-insight-copy">Uvid se sastavlja iz dostupnih Garminovih vrijednosti i tvoje osobne baze.</p></div></div>
+      <div class="health-skin-context"><span id="overview-skin-context">Temperatura kože · čeka zapis</span><a href="#skin-temperature">Detalji temperature kože ↗</a></div>
       <div class="health-weekly-head"><div><h3>Tjedni trendovi</h3><span>Prosjek zadnjih 7 dana prema prethodnih 7 · bez zaključivanja iz jednog dana</span></div><span class="badge" id="health-weekly-range">—</span></div>
       <div class="health-weekly-trends" id="health-weekly-trends"></div>
       <div class="note">Prikaz uspoređuje Garminove signale s tvojim nedavnim zapisima. Ne predstavlja medicinsku procjenu; dostupnost pojedinog područja ovisi o Garminovu zapisu.</div>
@@ -126,13 +150,14 @@
     </article>
   </section>
 
-  <section class="section" id="daily-summary"><details class="secondary-disclosure"><summary class="section-head"><div><h2>Ostale dnevne metrike</h2><span class="section-note">Sažeci i poveznice na detalje</span></div><span class="badge">Otvori</span></summary><div class="overview" id="overview"><div class="loading">Učitavam Garmin podatke…</div></div></details></section>
 
-  <section class="section" id="activity-goals"><details class="secondary-disclosure"><summary class="section-head"><div><h2>Aktivnost i ciljevi</h2><span class="section-note">Garmin ciljevi · odabrani dan i zadnjih 7 dana</span></div><span class="badge">Otvori</span></summary><div class="layout-3">
+  <section class="section" id="activity-goals"><div class="section-head"><h2>Aktivnost i ciljevi</h2><span class="section-note">Garmin ciljevi · odabrani dan i zadnjih 7 dana</span></div><div class="layout-3">
     <article class="panel activity-goal-panel"><div class="panel-title"><h3>Koraci danas</h3><span class="badge">Garmin cilj</span></div><div id="steps-goal-ring" class="activity-goal-ring"></div></article>
     <article class="panel activity-goal-panel"><div class="panel-title"><h3>Intenzivne minute</h3><span class="badge">tjedno</span></div><div id="exercise-goal-ring" class="activity-goal-ring"></div><div class="panel-sub">Umjerene minute + dvostruko ponderirane intenzivne minute.</div></article>
     <article class="panel activity-goal-panel"><div class="panel-title"><h3>Aktivne kalorije</h3><span class="badge" id="activity-calories-date">—</span></div><div class="big-number activity-calories" id="activity-calories">—</div><div class="panel-sub" id="activity-calories-context">Garminov dnevni sažetak nije dostupan.</div></article>
-  </div></details></section>
+  </div></section>
+
+  <section class="section" id="daily-summary"><details class="secondary-disclosure"><summary class="section-head"><div><h2>Ostale dnevne metrike</h2><span class="section-note">Sažeci i poveznice na detalje</span></div><span class="badge">Otvori</span></summary><div class="overview" id="overview"><div class="loading">Učitavam Garmin podatke…</div></div></details></section>
 
 
   <section class="section">

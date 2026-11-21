@@ -25,6 +25,7 @@ if (nutritionRoot) mount(NutritionShell, { target: nutritionRoot });
 const historyRoot=document.createElement('div');
 document.getElementById('lab-recovery-panel-baseline')?.append(historyRoot);
 mount(HealthHistory,{target:historyRoot});
-const recoveryRoot=document.createElement('div');document.getElementById('health-overview')?.append(recoveryRoot);mount(RecoveryContributions,{target:recoveryRoot});
+const recoveryRoot = document.getElementById('recovery-root');
+if (recoveryRoot) mount(RecoveryContributions, { target: recoveryRoot });
 const compareRoot=document.createElement('div');document.getElementById('performance-trends')?.append(compareRoot);mount(RunComparison,{target:compareRoot});
 const responseRoot=document.createElement('div');document.getElementById('weekly-review')?.append(responseRoot);mount(TrainingResponse,{target:responseRoot});

@@ -17,10 +17,10 @@ const views: Array<{
     title: "Pregled dana",
     description: "Oporavak, san i današnji plan na jednom mjestu.",
     links: [
-      { id: "health-overview", label: "Zdravlje" },
-      { id: "daily-summary", label: "Danas ukratko" },
+      { id: "daily-signals", label: "Dnevni signali" },
+      { id: "training-plan", label: "Trening i vrijeme" },
+      { id: "health-overview", label: "Oporavak i zdravlje" },
       { id: "activity-goals", label: "Aktivnost" },
-      { id: "training-plan", label: "Sljedeći trening" },
     ],
   },
   {
@@ -74,6 +74,7 @@ const sectionIds: Record<string, string> = {
 
 const sectionViews: Record<string, ViewId> = {
   ...Object.fromEntries(nutritionSectionIds.map(id => [id, "nutrition" as const])),
+  "daily-signals": "overview",
   "health-overview": "overview",
   "daily-summary": "overview",
   "activity-goals": "overview",
@@ -88,6 +89,8 @@ const sectionViews: Record<string, ViewId> = {
   "activity-details": "performance",
   "recent-activity-metrics": "performance",
   "sleep-recovery": "lab",
+  "body-battery-day": "lab",
+  "lab-recovery-panel-baseline": "lab",
   "skin-temperature": "lab",
   "garmin-measurements": "lab",
   "blood-labs": "lab",
@@ -447,6 +450,11 @@ export function initializeDashboardViews(): void {
   const revealCollapsedTarget = (targetId: string) => {
     const target = document.getElementById(targetId);
     if (!target) return;
+    const tabPanel = target.closest<HTMLElement>(".lab-recovery-panel");
+    if (tabPanel?.hidden) {
+      const tabId = tabPanel.getAttribute("aria-labelledby");
+      if (tabId) document.getElementById(tabId)?.click();
+    }
     let disclosure = target.closest<HTMLDetailsElement>("details");
     while (disclosure) {
       disclosure.open = true;
@@ -478,7 +486,10 @@ export function initializeDashboardViews(): void {
   };
   window.addEventListener("resize",()=>requestAnimationFrame(()=>{const current=quickNavLinks.querySelector<HTMLAnchorElement>('a[aria-current="location"]');if(current)setCurrentSection(decodeURIComponent(current.hash.slice(1)))}));
   const sectionTargets = new Map<ViewId, string[]>();
-  for (const view of views) sectionTargets.set(view.id, view.links.map(({ id }) => id));
+  for (const view of views) {
+    const targets = Array.from(quickNavLinks.querySelectorAll<HTMLAnchorElement>(`a[data-dashboard-view="${view.id}"]`));
+    sectionTargets.set(view.id, targets.map(anchor => decodeURIComponent(anchor.hash.slice(1))));
+  }
   const writeViewHash = (viewId: ViewId, replace = false) => {
     const hash = `#view-${viewId}`;
     if (location.hash === hash) return;
