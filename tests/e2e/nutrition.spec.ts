@@ -82,15 +82,20 @@ test('nutrition distinguishes reported carbs from comparable EU targets and unkn
  await page.goto('/#nutrition-overview');
  await page.locator('#date').fill(date);await page.locator('#date').dispatchEvent('change');
  const macros=page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'Makronutrijenti',exact:true})});
- await expect(macros).toContainText('60 / 200 g');
+ const carbs=macros.locator('.macro.carbs');
+ await expect(carbs).toContainText('≈ 60 / 200 g');
+ await expect(carbs.getByRole('progressbar')).toHaveAttribute('value','60');
  await macros.getByText('Kako se računa?',{exact:true}).click();
  await expect(macros.getByText(/UH su procjena/)).toBeVisible();
  await openNutritionSection(page, 'overview');
  await expect(page.locator('.nutrition')).toContainText('UH 70 g');
  const unknown=await call('/foods',{name:'Synthetic unknown '+crypto.randomUUID(),source:'Synthetic',nutrients:{carbs:5}});
- await call('/diary/entries',{date,meal:'snack',kind:'food',sourceId:unknown.id,quantity:100});
+ await call('/diary/entries',{date,meal:'lunch',kind:'food',sourceId:unknown.id,quantity:100});
  await page.getByRole('button',{name:'Osvježi prehranu'}).click();
- await expect(macros).toContainText('— / 200 g');
+ await expect(carbs.getByText('75 g iz zapisa')).toBeVisible();
+ await expect(carbs).toContainText('Cilj 200 g · usporedba nedostupna');
+ await expect(carbs.getByRole('progressbar')).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Ručak',exact:true})).toContainText('75 g UH iz zapisa');
  await expect(macros).toContainText('definicija ili podaci nisu potvrđeni');
 });
 

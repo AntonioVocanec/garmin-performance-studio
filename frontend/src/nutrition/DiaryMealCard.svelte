@@ -9,15 +9,18 @@
   let expanded = $state(true);
   let editing = $state(false);
 
-  function total(key:keyof Nutrients) {
+  function total(key:keyof Nutrients, useSourceCarbs=false) {
     let sum = 0;
     for (const {nutrients} of meal.entries) {
-      const value = key === 'carbs' ? nutrients.comparableNutrients?.carbs : nutrients[key];
+      const value = key === 'carbs' && !useSourceCarbs ? nutrients.comparableNutrients?.carbs : nutrients[key];
       if (value == null || String(value).trim() === '' || !Number.isFinite(Number(value))) return null;
       sum += Number(value);
     }
     return sum;
   }
+  const comparableCarbs = $derived(total('carbs'));
+  const reportedCarbs = $derived(comparableCarbs === null ? total('carbs',true) : null);
+  const estimatedCarbs = $derived(comparableCarbs !== null && meal.entries.some(entry=>entry.nutrients.carbComparison==='estimated'));
   const macros = [
     ['protein','proteina'], ['carbs','UH'], ['fiber','vlakana'], ['fat','masti'],
   ] as const;
@@ -40,7 +43,13 @@
   {#if meal.entries.length}
     <div class="macros">
       {#each macros as [key,label]}
-        <span>{fmt(total(key))} g {label}</span>
+        {#if key === 'carbs' && reportedCarbs !== null}
+          <span>{fmt(reportedCarbs)} g UH iz zapisa</span>
+        {:else if key === 'carbs'}
+          <span>{estimatedCarbs ? '≈ ' : ''}{fmt(comparableCarbs)} g UH</span>
+        {:else}
+          <span>{fmt(total(key))} g {label}</span>
+        {/if}
       {/each}
     </div>
   {/if}

@@ -44,7 +44,12 @@
           {#if goal > 0 && value != null}
             <progress aria-label={label} value={Math.min(Number(value),goal)} max={goal}></progress>
           {/if}
-          <strong>{fmt(value)}{goal > 0 ? ' / '+fmt(goal) : ''} g</strong>
+          {#if key === 'carbs' && value == null && diary.nutrients.carbs != null}
+            <strong>{fmt(diary.nutrients.carbs)} g iz zapisa</strong>
+            {#if goal > 0}<small>Cilj {fmt(goal)} g · usporedba nedostupna</small>{/if}
+          {:else}
+            <strong>{key === 'carbs' && value != null && diary.carbComparison === 'estimated' ? '≈ ' : ''}{fmt(value)}{goal > 0 ? ' / '+fmt(goal) : ''} g</strong>
+          {/if}
         </div>
       {/each}
     </div>
