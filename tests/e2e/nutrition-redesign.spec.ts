@@ -85,7 +85,7 @@ for (const width of [390, 1440]) {
 }
 
 
-test('nutrition navigation keeps the seven deep links and restores the correct group', async ({ page }) => {
+test('nutrition navigation keeps legacy deep links and restores the correct group', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockDashboardApi(page);
   await page.route('**/api/nutrition/energy?**', route => route.fulfill({json:{ok:true,data:{
@@ -110,11 +110,24 @@ test('nutrition navigation keeps the seven deep links and restores the correct g
   for (const [section, group, title] of expected) {
     await page.goto('/#nutrition-' + section);
     await expect(toolbar).toHaveText(title);
-    if(section==='diary')await expect(page.getByRole('heading',{name:'Dnevnik prehrane'})).toBeVisible();
+    if(section==='diary'||section==='overview'){
+      await expect(page.getByRole('heading',{name:'Dnevnik prehrane'})).toBeVisible();
+      const dayNav=page.getByRole('navigation',{name:'Odjeljci · Moj dan'});
+      await expect(dayNav.getByRole('link')).toHaveText(['Moj dan','Trendovi']);
+      await expect(dayNav.getByRole('link',{name:'Moj dan',exact:true})).toHaveAttribute('aria-current','page');
+    }
     await expect(navigation.getByRole('link')).toHaveText(['Moj dan','Planer','Kuhinja','Zalihe']);
     await expect(navigation.getByRole('link', { name: group })).toHaveAttribute('aria-current','location');
   }
 
+  await page.goto('/#nutrition-diary');
+  await page.locator('.nutrition-subnav').getByRole('link',{name:'Trendovi',exact:true}).click();
+  await expect(toolbar).toHaveText('Trendovi prehrane');
+  await page.goBack();
+  await expect(page).toHaveURL(/#nutrition-diary$/);
+  await expect(toolbar).toHaveText('Moj dan');
+  await expect(page.locator('#nutrition-diary')).toBeInViewport();
+  await page.goto('/#nutrition-shopping');
   await page.reload();
   await expect(toolbar).toHaveText('Kupovina');
   await expect(page.getByRole('link', { name: 'Kupovina', exact: true })).toHaveAttribute('aria-current','page');
@@ -158,7 +171,11 @@ for (const width of [320, 390, 1440]) {
     await expect(trigger).toBeEnabled();
     await expect(trigger).toBeInViewport({ ratio: 1 });
     await expect(page.locator('#nutrition-energy-chart')).toHaveCount(0);
-    await expect(page.getByText('Nema evidentiranih ni planiranih obroka za ovaj dan.')).toBeVisible();
+    const diary=page.locator('#nutrition-diary');
+    const mealGroups=diary.locator('.nutrition-meal');
+    const meals=[['Doručak','breakfast'],['Ručak','lunch'],['Međuobrok','snack'],['Večera','dinner']];
+    await expect(mealGroups.getByRole('heading')).toHaveText(meals.map(([label])=>label));
+    await expect(diary.getByText('Nema unosa',{exact:true})).toHaveCount(4);
     await expect(page.getByRole('heading', { name: 'Upozorenja zaliha' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Meal Prep i plan' })).toHaveCount(0);
     if(width>320)await page.screenshot({path:info.outputPath('moj-dan.png')});
@@ -169,6 +186,13 @@ for (const width of [320, 390, 1440]) {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(trigger).toBeFocused();
+    for(const [label,value] of meals){
+      const add=diary.getByRole('button',{name:'Dodaj unos · '+label,exact:true});
+      await add.press('Enter');
+      await expect(dialog.getByRole('combobox',{name:'Obrok',exact:true})).toHaveValue(value);
+      await dialog.getByRole('button',{name:'Odustani',exact:true}).click();
+      await expect(add).toBeFocused();
+    }
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   });
 }
@@ -457,4 +481,39 @@ test('meal dialog validates each source in Croatian and preserves successful log
   }
   expect(browserErrors).toEqual([]);
   expect(apiErrors).toEqual([]);
+});
+
+
+test('adding from Međuobrok stores a snack and updates only its diary section', async ({page,request}) => {
+  const create=await request.post('/api/nutrition/foods',{
+    data:{name:'Probni međuobrok '+crypto.randomUUID(),source:'Izmišljena deklaracija',nutrients:{kcal:'100'}},
+    headers:{'Idempotency-Key':crypto.randomUUID()},
+  });
+  expect(create.ok()).toBeTruthy();
+  const food=(await create.json()).data;
+  await mockDashboardApi(page);
+  await page.route('**/api/nutrition/energy?**',route=>route.fulfill({json:{ok:true,data:{
+    date:new URL(route.request().url()).searchParams.get('date'),status:'unavailable',totalCalories:null,
+  }}}));
+  await page.goto('/#nutrition-overview');
+  const diary=page.locator('#nutrition-diary');
+  const snack=diary.getByRole('region',{name:'Međuobrok',exact:true});
+  const add=snack.getByRole('button',{name:'Dodaj unos · Međuobrok'});
+  await add.click();
+  const dialog=page.getByRole('dialog',{name:'Dodaj obrok'});
+  await expect(dialog.getByRole('combobox',{name:'Obrok',exact:true})).toHaveValue('snack');
+  const submit=dialog.getByRole('button',{name:'Potvrdi unos'});
+  await submit.click();
+  await expect(dialog.getByRole('combobox',{name:'Odaberi',exact:true})).toHaveAccessibleDescription('Odaberi namirnicu.');
+  await dialog.getByRole('combobox',{name:'Odaberi',exact:true}).selectOption(food.id);
+  await submit.click();
+  await expect(dialog).toBeHidden();
+  await expect(snack).toContainText(food.name);
+  for(const meal of ['Doručak','Ručak','Večera']){
+    await expect(diary.getByRole('region',{name:meal,exact:true})).not.toContainText(food.name);
+  }
+  const date=await page.locator('#date').inputValue();
+  const response=await request.get('/api/nutrition/diary?date='+date);
+  const entries=(await response.json()).data.entries;
+  expect(entries.filter((entry:{name:string})=>entry.name===food.name)).toEqual([expect.objectContaining({meal:'snack'})]);
 });

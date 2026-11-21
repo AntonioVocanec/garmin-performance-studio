@@ -73,17 +73,6 @@
   grid-column: 1;
   grid-row: 1;
 }
-.nutrition-day-empty {
-  margin: 14px 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--muted);
-}
-.nutrition .nutrition-day-empty p {
-  margin: 0;
-}
 .nutrition-day-summary > section + section {
   padding-top: 14px;
   border-top: 1px solid var(--line);
@@ -101,6 +90,20 @@
 .nutrition-meal {
   border-top: 1px solid var(--line);
   padding: 12px 0;
+}
+.nutrition-meal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.nutrition .nutrition-meal-heading h4,
+.nutrition .nutrition-meal-empty {
+  margin: 0;
+}
+.nutrition .nutrition-add-meal {
+  color: var(--cyan);
 }
 .nutrition-stock-alerts {
   display: grid;

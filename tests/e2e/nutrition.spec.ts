@@ -84,7 +84,7 @@ test('nutrition distinguishes reported carbs from comparable EU targets and unkn
  const macros=page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'Makronutrijenti',exact:true})});
  await expect(macros).toContainText('60 / 200 g');
  await expect(macros).toContainText('procjena');
- await openNutritionSection(page, 'diary');
+ await openNutritionSection(page, 'overview');
  await expect(page.locator('.nutrition')).toContainText('UH 70 g');
  const unknown=await call('/foods',{name:'Synthetic unknown '+crypto.randomUUID(),source:'Synthetic',nutrients:{carbs:5}});
  await call('/diary/entries',{date,meal:'snack',kind:'food',sourceId:unknown.id,quantity:100});
@@ -116,7 +116,7 @@ test('nutrition preserves Garmin navigation and completes local inventory cookin
  await page.getByRole('link',{name:'Otvori gotove porcije'}).click();
  await expect(page.getByRole('link',{name:'Zabilježi konzumaciju',exact:true}).last()).toBeVisible();
  const lotResponse=await request.get('/api/nutrition/inventory');const lot=(await lotResponse.json()).data.find((l:{name:string})=>l.name===recipe.name);
- await openNutritionSection(page, 'diary');
+ await openNutritionSection(page, 'overview');
  await page.getByRole('button',{name:'Evidentiraj obrok'}).click();
  await page.getByRole('combobox',{name:'Vrsta',exact:true}).selectOption('portion');
  await page.getByRole('combobox',{name:'Odaberi',exact:true}).selectOption(lot.id);

@@ -51,5 +51,5 @@ export async function nutritionApi<T>(path:string,method='GET',body?:unknown,sig
   try{const result=await requestJson<{ok:true;data:T}>(`/api/nutrition${path}`,{method,signal,headers:{'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});pending.delete(fingerprint);return result.data}catch(error){throw error}
 }
 export const fmt=(value:unknown,digits=1):string=>value===null||value===undefined||value===''?'—':Number(value).toLocaleString('hr-HR',{maximumFractionDigits:digits});
-export const mealLabels:Record<string,string>={breakfast:'Doručak',lunch:'Ručak',dinner:'Večera',snack:'Užine'};
+export const mealLabels:Record<string,string>={breakfast:'Doručak',lunch:'Ručak',snack:'Međuobrok',dinner:'Večera'};
 export const locationLabels:Record<string,string>={pantry:'Smočnica',fridge:'Hladnjak',freezer:'Zamrzivač'};

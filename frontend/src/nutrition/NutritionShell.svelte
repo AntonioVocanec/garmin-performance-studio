@@ -2,7 +2,7 @@
  import {onMount,tick} from 'svelte';
  import {DashboardApiError} from '../lib/api';
  import {nutritionApi as api,validateShoppingPreview,type ShoppingPreviewItem,fmt,comparisonNutrients,carbExplanation,mealLabels,locationLabels,type Food,type Recipe,type Lot,type Diary,type Profile,type PlanEntry,type Shopping,type Energy,type Overview,type CookingPreview} from '../lib/nutritionApi';
- import {nutritionGroupFor,nutritionSectionIds} from '../lib/nutritionViews';
+ import {nutritionGroupFor,nutritionViewForHash} from '../lib/nutritionViews';
  import NutritionProfile from './NutritionProfile.svelte';
  import CatalogEditor from './CatalogEditor.svelte';
  import NutritionCharts from './NutritionCharts.svelte';
@@ -38,14 +38,15 @@
  let aiLots=$state<string[]>([]),aiPreview=$state<{previewId:string;items:{name:string;quantity:string;unit:string}[];staticInstructions:string}|null>(null),aiConfirmed=$state(false),aiDrafts=$state<{id:string;recipe:{name:string;steps:string[];ingredients:{foodId:string;quantity:string}[]}}[]>([]);
  let trainingMinutes=$state(''),extraCalories=$state(''),extraCarbs=$state('');
  let controller:AbortController|undefined,energyController:AbortController|undefined;
- const titles:Record<string,string>={overview:'Moj dan',diary:'Moj dan',trends:'Trendovi prehrane',planner:'Tjedni planer',recipes:'Recepti',prep:'Meal Prep',portions:'Gotove porcije','ai-recipes':'AI recepti',inventory:'Zalihe',shopping:'Kupovina',catalog:'Katalog namirnica','inventory-history':'Povijest inventara'};
+ const titles:Record<string,string>={overview:'Moj dan',trends:'Trendovi prehrane',planner:'Tjedni planer',recipes:'Recepti',prep:'Meal Prep',portions:'Gotove porcije','ai-recipes':'AI recepti',inventory:'Zalihe',shopping:'Kupovina',catalog:'Katalog namirnica','inventory-history':'Povijest inventara'};
  let mealDialog: HTMLDialogElement;
  let mealTrigger=$state<HTMLButtonElement>();
+ let mealReturnFocus:HTMLButtonElement|undefined;
  let profileDetails=$state<HTMLDetailsElement>();
  let logError=$state('');
  let logSourceError=$state('');
  let logSourceField=$state<HTMLSelectElement>();
- const isDailyView=$derived(view==='overview'||view==='diary');
+ const isDailyView=$derived(view==='overview');
  const planStatusLabels:Record<string,string>={planned:'Planirano',prepared:'Pripremljeno u planu',
    consumed:'Označeno konzumirano u planu',skipped:'Preskočeno u planu'};
  const overview=$derived(overviewResponse?.diary.date===date?overviewResponse:null);
@@ -54,7 +55,7 @@
    label,key,
    entries:diary?.entries.filter(entry=>entry.meal===key)??[],
    planned:overview?.meals.filter(meal=>meal.meal===key)??[],
- })).filter(meal=>meal.entries.length||meal.planned.length));
+ })));
  const selectedPortion=$derived(logKind==='portion'?overview?.portions.find(l=>l.id===logSource):undefined);
  const portionQuantity=$derived(Number(logQuantity.replace(',','.')));
  const nutritionSection=$derived('nutrition-'+view);
@@ -120,11 +121,11 @@
  async function load(){if(!active||!date)return;const requestedDate=date,overviewDate=view==='inventory'?receiptToday():date,revision=contextRevision;controller?.abort();controller=new AbortController();const signal=controller.signal;loading=true;error='';
  try{const [f,r,l,p,d,o,pl,sl,h,ds,sch,ps]=await Promise.all([api<Food[]>('/foods','GET',undefined,signal),api<Recipe[]>('/recipes','GET',undefined,signal),api<Lot[]>('/inventory','GET',undefined,signal),api<Profile>('/profile','GET',undefined,signal),api<Diary>(`/diary?date=${date}`,'GET',undefined,signal),api<Overview>(`/dashboard?date=${overviewDate}`,'GET',undefined,signal),api<PlanEntry[]>(`/plan?week=${weekStart(date)}`,'GET',undefined,signal),api<Shopping[]>('/shopping/lists','GET',undefined,signal),api<typeof history>('/inventory/history','GET',undefined,signal),api<Diary[]>(`/analytics?start=${shift(date,-6)}&end=${date}`,'GET',undefined,signal),api<typeof schedule>('/prep/schedule','GET',undefined,signal),api<NonNullable<typeof planSummary>>(`/plan/summary?week=${weekStart(date)}`,'GET',undefined,signal)]);if(signal.aborted||date!==requestedDate||revision!==contextRevision||!active)return;
  if(d.date!==requestedDate){diary=null;throw new Error('Datum primljenog dnevnika ne odgovara odabranom danu. Osvježi prehranu.')}
- const revealDiary=!diary&&view==='diary';
+ const revealDiary=!diary&&location.hash==='#nutrition-diary';
  foods=f;recipes=r;lots=l;profile=p;if(!prepQuantity&&p.prepPortions)prepQuantity=String(p.prepPortions);diary=d;overviewResponse=o.diary.date===overviewDate?o:null;plans=pl;lists=sl;history=h;days=ds;schedule=sch;planSummary=ps;
  if(revealDiary){
    await tick();
-   if(revision===contextRevision&&view==='diary')window.dispatchEvent(new Event('dashboard:content-updated'));
+   if(revision===contextRevision&&location.hash==='#nutrition-diary')window.dispatchEvent(new Event('dashboard:content-updated'));
  }}
  catch(e){if(!signal.aborted&&revision===contextRevision)error=e instanceof Error?e.message:String(e)}finally{if(!signal.aborted)loading=false}}
  async function loadEnergy(){
@@ -211,7 +212,7 @@
      onError:e=>{if(e instanceof DashboardApiError&&e.status===409)invalidateShopping()},
    });
  }
- function navigate(){const previousView=view,wasActive=active;const hash=location.hash;active=document.querySelector('main.shell')?.getAttribute('data-active-view')==='nutrition'||hash.startsWith('#nutrition-')||hash==='#view-nutrition';const next=hash.startsWith('#nutrition-')?hash.slice(11):'overview';view=nutritionSectionIds.includes('nutrition-'+next)?next:'overview';if(previousView!==view||wasActive!==active)clearNotices();if(active&&date&&(!diary||previousView!==view||!wasActive)){void load();if(energy?.date!==date)void loadEnergy()}}
+ function navigate(){const previousView=view,wasActive=active;const hash=location.hash;active=document.querySelector('main.shell')?.getAttribute('data-active-view')==='nutrition'||hash.startsWith('#nutrition-')||hash==='#view-nutrition';view=nutritionViewForHash(hash);if(previousView!==view||wasActive!==active)clearNotices();if(active&&date&&(!diary||previousView!==view||!wasActive)){void load();if(energy?.date!==date)void loadEnergy()}}
  onMount(()=>{
    const input=document.getElementById('date') as HTMLInputElement;
    date=input.value;
@@ -292,7 +293,9 @@
    });
    if(saved)receiptDialog.close();
  }
- async function openMeal(source?:{portionId:string}|PlanEntry){
+ async function openMeal({
+   source,meal='lunch',trigger=mealTrigger,
+ }: {source?:{portionId:string}|PlanEntry;meal?:string;trigger?:HTMLButtonElement}={}){
    const portion=source&&'portionId' in source?source:null;
    const plan=source&&'recipe_version_id' in source?source:null;
    logError='';
@@ -301,13 +304,14 @@
    logRecipeVersion=plan?{id:plan.recipe_version_id,name:plan.name}:null;
    logSource=portion?.portionId??plan?.recipe_version_id??'';
    logQuantity=plan?.portions??'1';
-   logMeal=plan?.meal??'lunch';
+   logMeal=plan?.meal??meal;
    logConsume=false;
    const revision=contextRevision;
    await tick();
    if(active&&isDailyView&&revision===contextRevision&&!mealDialog.open){
      // Some browsers do not focus a button when clicked. Establish the modal's return target.
-     if (!source) mealTrigger?.focus({preventScroll:true});
+     mealReturnFocus=trigger;
+     if (!source) trigger?.focus({preventScroll:true});
      mealDialog.showModal();
    }
  }
@@ -315,13 +319,16 @@
    const selectedDate='entry_date' in source?source.entry_date:date;
    // The dashboard handles the anchor at document level before opening the form.
    requestAnimationFrame(()=>{
-     if(view!=='diary')return;
+     if(!isDailyView)return;
      if(date!==selectedDate)selectPlanDay(selectedDate);
-     if(date===selectedDate)void openMeal(source);
+     if(date===selectedDate)void openMeal({source});
    });
  }
  function mealClosed(){
-   if (active && isDailyView && document.activeElement===document.body) mealTrigger?.focus();
+   if (active && isDailyView && document.activeElement===document.body) {
+     (mealReturnFocus?.isConnected ? mealReturnFocus : mealTrigger)?.focus({preventScroll:true});
+   }
+   mealReturnFocus=undefined;
  }
  async function log(e:SubmitEvent){
    e.preventDefault();
@@ -524,8 +531,12 @@
    <article class="panel nutrition-day-meals" id="nutrition-diary">
      <h3>Dnevnik prehrane</h3>
      {#each dayMeals as meal (meal.key)}
-       <section class="nutrition-meal">
-         <h4>{meal.label}</h4>
+       <section class="nutrition-meal" aria-labelledby={'diary-meal-'+meal.key}>
+         <header class="nutrition-meal-heading">
+           <h4 id={'diary-meal-'+meal.key}>{meal.label}</h4>
+           <button type="button" class="btn nutrition-add-meal" aria-label={'Dodaj unos · '+meal.label}
+             disabled={loading||busy} onclick={event=>openMeal({meal:meal.key,trigger:event.currentTarget})}>Dodaj unos</button>
+         </header>
          {#each meal.entries as entry (entry.id)}
            <div class="nutrition-row">
              <div>
@@ -534,15 +545,13 @@
              </div>
              <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/operations/${entry.operation_id}/reverse`,'POST'),'Unos je poništen kompenzacijom povezanog inventara.')}>Poništi unos</button>
            </div>
+         {:else}
+           <p class="quiet nutrition-meal-empty">Nema unosa</p>
          {/each}
          {#each meal.planned as planned (planned.id)}
            <p><span class="badge">{planStatusLabels[planned.status]??'Iz plana'}</span> <b>{planned.name}</b> · {fmt(planned.portions,3)} porcija</p>
          {/each}
        </section>
-     {:else}
-       <div class="nutrition-day-empty">
-         <p>{overview?'Nema evidentiranih ni planiranih obroka za ovaj dan.':'Dan bez evidentiranih obroka'}</p>
-       </div>
      {/each}
      <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/diary/days/${date}`,'PUT',{complete:!diary!.complete}))}>{diary.complete?'Ponovno otvori dan':'Potvrdi da je dnevnik za dan potpun'}</button>
    </article>

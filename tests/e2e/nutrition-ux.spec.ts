@@ -82,7 +82,7 @@ test.describe('Nutrition chart day coverage', () => {
     await page.locator('#date').fill('2020-01-06');
     await page.locator('#date').press('Tab');
     await expect(summary).toContainText('svi dani imaju dostupne vrijednosti');
-    await go(page, 'diary');
+    await go(page, 'overview');
     rows = [];
     await go(page, 'trends');
     await expect(summary).toContainText('Nema dana za prikaz');
