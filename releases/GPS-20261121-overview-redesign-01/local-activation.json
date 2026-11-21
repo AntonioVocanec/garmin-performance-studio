@@ -1,0 +1,16 @@
+{
+  "databaseBackupSha256": "c4fe17eb7fa689c76a2e8e24de119fd3e18165ff79e30fef67c78345b711dc5c",
+  "databaseVerification": {
+    "timestampOnlyUpdates": [],
+    "verifiedTables": 36
+  },
+  "manifestSha256": "8d06a3ab6f3778c3db9630a6e451cff115015c0e767284fb59b87a97a6bc4885",
+  "pid": 21152,
+  "port": 8787,
+  "productionChromiumSmoke": "PASS: 390 and 1440 px with live forecast and simulated Garmin and Runna",
+  "releaseId": "GPS-20261121-overview-redesign-01",
+  "sourceCommit": "e848c288acdd93723d13c2ee58b3fbfb803e1659",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T11:19:00+01:00",
+  "verifiedFrontendFiles": 20
+}
