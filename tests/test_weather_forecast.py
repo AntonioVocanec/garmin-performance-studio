@@ -68,3 +68,15 @@ class ForecastTests(unittest.TestCase):
         }).encode())
         with self.assertRaises(weather.ForecastUnavailable):
             self.cache.get()
+
+    def test_current_and_hourly_data_follow_local_day(self):
+        data = sample(self.start)
+        data["current"] = {"time": "2026-10-24T23:45", "is_day": 0, "temperature_2m": 4}
+        data["hourly"] = {"time": ["2026-10-24T23:00", "2026-10-25T00:00"],
+                          "precipitation_probability": [0, 10], "wind_direction_10m": [90, 180]}
+        self.http.side_effect = lambda *a, **kw: BytesIO(json.dumps(data).encode())
+        result = self.cache.get()
+        self.assertEqual(result["current"]["rain"], 0)
+        self.assertEqual(result["current"]["daylight"], 0)
+        self.assertEqual(result["days"][1]["hours"][0]["direction"], 180)
+        self.assertIsNone(result["days"][0]["hours"][0]["temp"])
