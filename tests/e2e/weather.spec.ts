@@ -139,7 +139,11 @@ test('shows the Runna plan for the hovered or focused forecast day', async ({ pa
   await expect(tip).toContainText('Dugo trčanje');
   await expect(tip).toContainText('Termin nije zadan');
   await expect(buttons.first()).toHaveAttribute('aria-pressed', 'true');
-  await page.keyboard.press('Escape');
+  await expect(tip).toHaveCSS('background-color', 'rgb(16, 25, 31)');
+  await expect(tip).toHaveCSS('border-top-color', 'rgb(54, 81, 90)');
+  const rect = await tip.boundingBox();
+  expect(rect).not.toBeNull();
+  await page.mouse.move(rect!.x + rect!.width / 2, rect!.y + rect!.height / 2);
   await expect(tip).toBeHidden();
   await page.locator('.forecast .strip').focus();
   await page.keyboard.press('Tab');
@@ -153,4 +157,6 @@ test('shows the Runna plan for the hovered or focused forecast day', async ({ pa
   await expect(buttons.nth(1)).toHaveAttribute('aria-pressed', 'true');
   await expect(tip).toContainText('Dugo trčanje');
   await expect(tip).toBeInViewport();
+  await page.locator('.forecast h2').hover();
+  await expect(tip).toBeHidden();
 });

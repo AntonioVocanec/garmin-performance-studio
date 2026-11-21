@@ -66,23 +66,27 @@
   let popupLeft = $state(0);
   let dayStrip = $state<HTMLDivElement>();
   let popupTrigger: HTMLButtonElement | null = null;
+  let popupInput: 'pointer' | 'focus' | 'touch' | null = null;
   const upcoming = $derived(schedule?.ok ? schedule.upcomingRuns ?? [] : []);
   const dayRuns = $derived(upcoming.filter(run => run.date === popupDay?.date));
   const beyondVisiblePlan = $derived(popupDay && upcoming.length >= 8 && popupDay.date > upcoming[upcoming.length - 1].date);
 
-  function showPlan(day: Day, trigger: HTMLButtonElement) {
+  function showPlan(day: Day, trigger: HTMLButtonElement, input: NonNullable<typeof popupInput>, cursorX?: number) {
     if (!dayStrip) return;
     const strip = dayStrip.getBoundingClientRect();
     const button = trigger.getBoundingClientRect();
-    const width = Math.min(288, strip.width);
-    popupLeft = Math.max(0, Math.min(strip.width - width, button.left + button.width / 2 - strip.left - width / 2));
+    const width = Math.min(224, strip.width);
+    const anchor = cursorX ?? button.left + button.width / 2;
+    popupLeft = Math.max(0, Math.min(strip.width - width, anchor - strip.left + 12));
     popupDay = day;
     popupTrigger = trigger;
+    popupInput = input;
   }
 
   function hidePlan() {
     popupDay = null;
     popupTrigger = null;
+    popupInput = null;
   }
 
   function trainingDetails(run: PlannedRun) {
@@ -154,7 +158,7 @@
   });
 </script>
 
-<svelte:window onkeydown={(event) => { if (event.key === 'Escape' && popupDay) hidePlan(); }} onresize={hidePlan} />
+<svelte:window onresize={hidePlan} />
 
 <section class="forecast" aria-labelledby="forecast-heading">
   <h2 id="forecast-heading">Bjelovar · prognoza za 7 dana
@@ -203,21 +207,34 @@
         </div>
       {:else}<p class="missing">Satna prognoza za ovaj prikaz nije dostupna.</p>{/if}
     {/if}
-    <div class="day-strip" role="group" aria-label="Dnevna prognoza i plan treninga" bind:this={dayStrip}
-      onpointerleave={(event) => { if (event.pointerType !== 'touch' && !popupTrigger?.matches(':focus-visible')) hidePlan(); }}>
+    <div class="day-strip" bind:this={dayStrip}>
       <!-- svelte-ignore a11y_no_noninteractive_tabindex (The scrollable forecast must accept keyboard focus.) -->
       <div class="strip" role="region" aria-label="Sedmodnevna vremenska prognoza" tabindex="0"
-        onscroll={() => { if (popupDay && popupTrigger) showPlan(popupDay, popupTrigger); }}>
+        onscroll={hidePlan}>
         <ol>
           {#each forecast.days as day, index (day.date)}
             {@const weather = condition(day.code)}
             <li>
               <button type="button" class="day" aria-pressed={selected === index}
                 aria-describedby={popupDay?.date === day.date ? 'forecast-training-tip' : undefined}
-                onpointerenter={(event) => { if (event.pointerType === 'mouse' || event.pointerType === 'pen') showPlan(day, event.currentTarget); }}
-                onfocus={(event) => { if (event.currentTarget.matches(':focus-visible')) showPlan(day, event.currentTarget); }}
-                onblur={() => { if (popupDay?.date === day.date) hidePlan(); }}
-                onclick={(event) => { selected = index; showPlan(day, event.currentTarget); }}>
+                onpointermove={(event) => {
+                  if (event.pointerType !== 'touch') showPlan(day, event.currentTarget, 'pointer', event.clientX);
+                }}
+                onpointerleave={(event) => {
+                  if (popupTrigger === event.currentTarget && popupInput === 'pointer') hidePlan();
+                }}
+                onfocus={(event) => {
+                  if (event.currentTarget.matches(':focus-visible')) showPlan(day, event.currentTarget, 'focus');
+                }}
+                onblur={(event) => {
+                  if (popupTrigger === event.currentTarget && popupInput !== 'pointer') hidePlan();
+                }}
+                onclick={(event) => {
+                  selected = index;
+                  if (event instanceof PointerEvent && event.pointerType === 'touch') {
+                    showPlan(day, event.currentTarget, 'touch');
+                  }
+                }}>
                 <time datetime={day.date}>{index === 0 ? 'Danas' : weekday.format(noon(day.date))}</time>
                 <span class="icon" role="img" aria-label={weather?.[2] ?? 'Opis vremena nije dostupan'} title={weather?.[2]}>{weather?.[1] ?? '—'}</span>
                 <span><span class="low" title="Najniža temperatura"><span class="sr">Najniža </span>{quantity(day.low, '°')}</span> / <b title="Najviša temperatura"><span class="sr">Najviša </span>{quantity(day.high, ' °C')}</b></span>
@@ -261,23 +278,25 @@
   .training-tip {
     position: absolute;
     z-index: 2;
-    bottom: 100%;
+    bottom: calc(100% + 6px);
+    pointer-events: none;
     box-sizing: border-box;
-    width: min(100%, 288px);
-    max-height: 13rem;
-    overflow: auto;
+    width: min(100%, 224px);
     display: grid;
-    gap: .4rem;
-    padding: .65rem .8rem;
-    border: 1px solid var(--line);
-    border-radius: .65rem;
-    background: var(--surface-hi);
-    color: var(--text);
-    font-size: var(--text-detail);
-    box-shadow: var(--shadow);
+    gap: .25rem;
+    padding: .5rem .625rem;
+    border: 1px solid #36515a;
+    border-radius: 9px;
+    background: #10191f;
+    color: #edf5f4;
+    font-size: .75rem;
+    line-height: 1.45;
+    box-shadow: 0 8px 28px rgba(0,0,0,.35);
   }
-  .tip-label { color: var(--muted); font-size: var(--text-caption); }
-  .tip-run { display: grid; gap: .15rem; overflow-wrap: anywhere; }
+  .tip-label { color: var(--muted); }
+  .tip-run { display: grid; gap: .1rem; overflow-wrap: anywhere; }
+  .tip-run strong::before { content: '● '; color: var(--cyan); }
+  .tip-run small { font-size: inherit; }
   .strip { overflow-x: auto; overscroll-behavior-x: contain; }
   .strip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   ol { display: grid; grid-template-columns: repeat(7, minmax(6.6rem, 1fr)); list-style: none; margin: 0; padding: 0; }
