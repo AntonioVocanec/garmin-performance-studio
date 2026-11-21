@@ -1,8 +1,10 @@
 <script lang="ts">
  import {onMount,tick} from 'svelte';
  import {DashboardApiError} from '../lib/api';
- import {nutritionApi as api,validateShoppingPreview,type ShoppingPreviewItem,fmt,comparisonNutrients,carbExplanation,mealLabels,locationLabels,type Food,type Recipe,type Lot,type Diary,type Profile,type PlanEntry,type Shopping,type Energy,type Overview,type CookingPreview} from '../lib/nutritionApi';
+ import {nutritionApi as api,validateShoppingPreview,type ShoppingPreviewItem,fmt,mealLabels,locationLabels,type Food,type Recipe,type Lot,type Diary,type Profile,type PlanEntry,type Shopping,type Energy,type Overview,type CookingPreview} from '../lib/nutritionApi';
  import {nutritionGroupFor,nutritionViewForHash} from '../lib/nutritionViews';
+ import DailyEnergyCard from './DailyEnergyCard.svelte';
+ import DiaryMealCard from './DiaryMealCard.svelte';
  import NutritionProfile from './NutritionProfile.svelte';
  import CatalogEditor from './CatalogEditor.svelte';
  import NutritionCharts from './NutritionCharts.svelte';
@@ -111,8 +113,6 @@
  const portionCards=$derived([...preparedLots,...[...availablePortions.values()].filter(l=>!preparedLots.some(p=>p.id===l.id))]);
  const prepBody=$derived({recipeVersionId:prepRecipe,portions:prepQuantity,location:prepLocation,expiresOn:prepExpiry,asOf:date,cookedMass:prepMass||null,scheduleId,optionalIngredientPositions:[...prepOptionalPositions].sort((a,b)=>a-b)});
  const shownRecipes=$derived(recipes.filter(r=>r.name.toLocaleLowerCase('hr').includes(search.toLocaleLowerCase('hr'))&&(!recipeFilter||r.tags.includes(recipeFilter))));
- const nutritionTargets=$derived(diary?.targets??{});
- const comparableMacros=$derived(diary?comparisonNutrients(diary):null);
  const balance=$derived(
    diary?.date===date && energy?.date===date && diary.nutrients.kcal!=null && energy.totalCalories!=null
      ? Number(diary.nutrients.kcal)-energy.totalCalories : null
@@ -528,61 +528,16 @@
  {#if active}
  {#if isDailyView && diary}
  <div class="nutrition-day">
+   <DailyEnergyCard {diary} {energy} busy={busy||loading}
+     onsettings={()=>{if(profileDetails){profileDetails.open=true;profileDetails.querySelector('summary')?.focus()}}}
+     oncomplete={()=>action(()=>api(`/diary/days/${date}`,'PUT',{complete:!diary!.complete}))}/>
    <article class="panel nutrition-day-meals" id="nutrition-diary">
      <h3>Dnevnik prehrane</h3>
-     {#each dayMeals as meal (meal.key)}
-       <section class="nutrition-meal" aria-labelledby={'diary-meal-'+meal.key}>
-         <header class="nutrition-meal-heading">
-           <h4 id={'diary-meal-'+meal.key}>{meal.label}</h4>
-           <button type="button" class="btn nutrition-add-meal" aria-label={'Dodaj unos · '+meal.label}
-             disabled={loading||busy} onclick={event=>openMeal({meal:meal.key,trigger:event.currentTarget})}>Dodaj unos</button>
-         </header>
-         {#each meal.entries as entry (entry.id)}
-           <div class="nutrition-row">
-             <div>
-               <span class="badge">Evidentirano</span>
-               <p><b>{entry.name}</b> · {entry.quantity} {entry.unit} · {fmt(entry.nutrients.kcal,0)} kcal · {fmt(entry.nutrients.protein)} g proteina</p>
-             </div>
-             <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/operations/${entry.operation_id}/reverse`,'POST'),'Unos je poništen kompenzacijom povezanog inventara.')}>Poništi unos</button>
-           </div>
-         {:else}
-           <p class="quiet nutrition-meal-empty">Nema unosa</p>
-         {/each}
-         {#each meal.planned as planned (planned.id)}
-           <p><span class="badge">{planStatusLabels[planned.status]??'Iz plana'}</span> <b>{planned.name}</b> · {fmt(planned.portions,3)} porcija</p>
-         {/each}
-       </section>
+     {#each dayMeals as meal (date+meal.key)}
+       <DiaryMealCard {meal} {busy} {loading} {planStatusLabels}
+         onadd={trigger=>openMeal({meal:meal.key,trigger})}
+         onundo={id=>action(()=>api(`/operations/${id}/reverse`,'POST'),'Unos je poništen kompenzacijom povezanog inventara.')}/>
      {/each}
-     <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/diary/days/${date}`,'PUT',{complete:!diary!.complete}))}>{diary.complete?'Ponovno otvori dan':'Potvrdi da je dnevnik za dan potpun'}</button>
-   </article>
-   <article class="panel nutrition-day-summary">
-     <section>
-       <h3>Energija</h3>
-       <strong class="nutrition-value">{fmt(diary.nutrients.kcal,0)} <small>kcal uneseno</small></strong>
-       {#if nutritionTargets.calories}
-         <p>Cilj {fmt(nutritionTargets.calories,0)} kcal</p>
-       {:else}
-         <button class="btn" onclick={()=>{if(profileDetails){profileDetails.open=true;profileDetails.querySelector('summary')?.focus()}}}>Postavi cilj</button>
-       {/if}
-       {#if nutritionTargets.calories&&diary.nutrients.kcal!==null}
-         <progress aria-label="Napredak prema dnevnom kalorijskom cilju" max="100" value={Math.min(100,Number(diary.nutrients.kcal)/Number(nutritionTargets.calories)*100)}></progress>
-         <p>{fmt(Number(diary.nutrients.kcal)/Number(nutritionTargets.calories)*100,0)}% cilja</p>
-       {/if}
-     </section>
-     <section>
-       <div class="nutrition-day-summary-heading">
-         <h3>Makronutrijenti</h3>
-         <span class="quiet">Unos / cilj</span>
-       </div>
-       {#each [['protein','Proteini'],['carbs','Ugljikohidrati'],['fat','Masti']] as [key,label]}
-         <div class="nutrition-kv"><span>{label}</span><b>{fmt(comparableMacros?.[key as keyof typeof diary.nutrients])} / {fmt(nutritionTargets[key])} g</b></div>
-       {/each}
-       {#if diary.entries.length}
-         <p class="quiet">{carbExplanation(diary.carbComparison)}</p>
-         <p class="quiet">UH {fmt(diary.nutrients.carbs)} g prema izvornim zapisima.</p>
-         <p class="quiet">Vlakna {fmt(diary.nutrients.fiber)} g · energija prema izvornoj deklaraciji.</p>
-       {/if}
-     </section>
    </article>
  </div>
  {:else if view==='trends' && diary}

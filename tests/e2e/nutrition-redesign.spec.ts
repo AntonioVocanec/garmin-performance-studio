@@ -198,6 +198,42 @@ for (const width of [320, 390, 1440]) {
 }
 
 
+for (const width of [320,390,836,1440]) {
+  test('meal card separates logged and planned foods at '+width+' px', async ({page},info)=>{
+    await page.setViewportSize({width,height:900});
+    await mockDashboardApi(page);
+    const names=['Pečena bundeva s ružmarinom','Krem juha od slanutka'];
+    await page.route('**/api/nutrition/diary?**',route=>route.fulfill({json:{ok:true,data:{
+      date:new URL(route.request().url()).searchParams.get('date'),complete:false,targets:{},
+      nutrients:{kcal:'184',fiber:null},
+      entries:names.map((name,i)=>({id:'test'+i,operation_id:'op'+i,meal:'lunch',name,quantity:'100',unit:'g',
+        nutrients:{sourceKind:i?'recipe':'food',kcal:'92',protein:'2',fat:'0',fiber:i?null:'3',carbs:'10',comparableNutrients:{carbs:'7'}}}))
+    }}}));
+    await page.route('**/api/nutrition/dashboard?**',route=>route.fulfill({json:{ok:true,data:{
+      diary:{date:new URL(route.request().url()).searchParams.get('date')},portions:[],alerts:[],lowStock:[],
+      meals:[{id:'p1',name:'Salata od povrća',status:'planned',portions:1,meal:'lunch',nutrients:{kcal:'300'}}]
+    }}}));
+    await page.goto('/#nutrition-overview');
+    const card=page.getByRole('region',{name:'Ručak',exact:true});
+    await expect(card.getByText('184 kcal',{exact:true})).toBeVisible();
+    for(const macro of ['4 g proteina','14 g UH','— g vlakana','0 g masti']){
+      await expect(card.getByText(macro,{exact:true})).toBeVisible();
+    }
+    const list=card.getByRole('list',{name:'Evidentirano'});
+    await expect(list.getByRole('listitem')).toHaveCount(2);
+    await expect(card.getByRole('list',{name:'Iz plana'})).toContainText('Salata od povrća');
+    const toggle=card.getByRole('button',{name:'Ručak',exact:true});
+    await toggle.press('Enter');
+    await expect(list).toBeHidden();
+    await toggle.press('Space');
+    await card.getByRole('button',{name:'Uredi unose'}).click();
+    await expect(card.getByRole('button',{name:'Poništi unos · '+names[0]})).toBeVisible();
+    await card.getByRole('button',{name:'Završi uređivanje'}).click();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    await card.screenshot({path:info.outputPath('rucak.png')});
+  });
+}
+
 test('shopping keeps its explicit range and rejects a shortage that changed before save', async ({page,request}) => {
   await mockDashboardApi(page);
   await page.route('**/api/nutrition/energy?**', route=>route.fulfill({json:{ok:true,data:{

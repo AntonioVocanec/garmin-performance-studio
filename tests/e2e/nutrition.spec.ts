@@ -83,12 +83,13 @@ test('nutrition distinguishes reported carbs from comparable EU targets and unkn
  await page.locator('#date').fill(date);await page.locator('#date').dispatchEvent('change');
  const macros=page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'Makronutrijenti',exact:true})});
  await expect(macros).toContainText('60 / 200 g');
- await expect(macros).toContainText('procjena');
+ await macros.getByText('Kako se računa?',{exact:true}).click();
+ await expect(macros.getByText(/UH su procjena/)).toBeVisible();
  await openNutritionSection(page, 'overview');
  await expect(page.locator('.nutrition')).toContainText('UH 70 g');
  const unknown=await call('/foods',{name:'Synthetic unknown '+crypto.randomUUID(),source:'Synthetic',nutrients:{carbs:5}});
  await call('/diary/entries',{date,meal:'snack',kind:'food',sourceId:unknown.id,quantity:100});
- await openNutritionSection(page, 'overview');
+ await page.getByRole('button',{name:'Osvježi prehranu'}).click();
  await expect(macros).toContainText('— / 200 g');
  await expect(macros).toContainText('definicija ili podaci nisu potvrđeni');
 });

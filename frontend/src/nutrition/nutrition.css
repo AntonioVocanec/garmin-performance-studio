@@ -73,37 +73,11 @@
   grid-column: 1;
   grid-row: 1;
 }
-.nutrition-day-summary > section + section {
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-.nutrition-day-summary-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-}
-.nutrition .nutrition-day-summary-heading h3 {
-  margin: 0;
-}
-.nutrition-meal {
-  border-top: 1px solid var(--line);
-  padding: 12px 0;
-}
-.nutrition-meal-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-}
-.nutrition .nutrition-meal-heading h4,
-.nutrition .nutrition-meal-empty {
-  margin: 0;
-}
-.nutrition .nutrition-add-meal {
-  color: var(--cyan);
+.nutrition .nutrition-day-meals {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: 0;
 }
 .nutrition-stock-alerts {
   display: grid;
