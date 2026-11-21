@@ -1,0 +1,16 @@
+{
+  "databaseBackupSha256": "86b8ac5208361678d970340e673d9192fc169ebc358c4b2aa0b163320acf2fd3",
+  "databaseVerification": {
+    "timestampOnlyUpdates": [],
+    "verifiedTables": 36
+  },
+  "manifestSha256": "2e3bbcc1c39a7cd4c097998d0febaef12ccb1405203e1698af6a7847cc92f0f5",
+  "pid": 36372,
+  "port": 8787,
+  "productionChromiumSmoke": "8 passed with simulated API (320, 390, 836, 1440 px)",
+  "releaseId": "GPS-20261121-daily-energy-01",
+  "sourceCommit": "fb034801e285b52d5d0b95dbcb84d0a107589e2a",
+  "status": "PRODUCTION_ACTIVE",
+  "verifiedAt": "2026-11-21T18:25:17+01:00",
+  "verifiedFrontendFiles": 20
+}

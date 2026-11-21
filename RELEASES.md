@@ -178,3 +178,7 @@ Obrazac Dodaj obrok prikazuje hrvatsku poruku uz prazan odabir namirnice, recept
 ## GPS-20261121-meal-diary-merged-01
 
 Prehrana spaja pregled i dnevnik u Moj dan. Doručak, ručak, međuobrok i večera imaju zaseban brzi unos. Stari URL dnevnika potvrđen je na portu 8787 pri 390 i 1440 px. [Manifest](releases/GPS-20261121-meal-diary-merged-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-meal-diary-merged-01/local-activation.json).
+
+## GPS-20261121-daily-energy-01
+
+Kartica Energija i sklopive kartice obroka u prikazu Moj dan. Na portu 8787 prošlo je osam provjera posluženog prikaza sa simuliranim podacima. [Manifest](releases/GPS-20261121-daily-energy-01/release-manifest.json) · [Zapis aktivacije](releases/GPS-20261121-daily-energy-01/local-activation.json).
