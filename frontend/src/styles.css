@@ -442,7 +442,7 @@ html{scroll-padding-top:116px}
 #dashboard-view-overview .hero-main { padding: clamp(.875rem, 2vw, 1.25rem); }
 #dashboard-view-overview .hero-executive-title { margin: .3rem 0; font-size: clamp(1.375rem, 2.3vw, 2rem); }
 #dashboard-view-overview .hero-meta { margin-top: .6rem; }
-#daily-signals { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#daily-signals { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
 #daily-signals .today-hero-card { display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; }
 #daily-signals .today-hero-kicker, .overview-training-aside .today-hero-kicker { margin: 0; letter-spacing: .025em; }
 #daily-signals .today-hero-kicker { color: var(--text); }
@@ -450,7 +450,7 @@ html{scroll-padding-top:116px}
 .today-sleep-card .daily-signal-value { color: var(--violet); }
 .today-energy-card .daily-signal-value { color: var(--mint); }
 #daily-signals small, .weather-summary-card small { display: block; color: var(--muted); line-height: 1.4; font-size: var(--text-caption); }
-#daily-signals .today-hero-link { width: 100%; gap: .5rem; margin-top: auto; padding-top: .35rem; }
+#daily-signals .today-hero-link { width: 100%; gap: .5rem; margin-top: auto; padding-top: .65rem; min-height: 2rem; }
 #daily-signals .today-status-track { width: 100%; }
 .daily-battery { display: flex; align-items: center; gap: .5rem; }
 .daily-battery .today-energy-ring { width: 1.65rem; height: 1.65rem; }
@@ -460,8 +460,7 @@ html{scroll-padding-top:116px}
 .overview-training-aside { min-width: 0; display: grid; gap: .625rem; }
 .overview-training-grid #schedule { grid-template-columns: minmax(0,1fr); gap: .75rem; padding: .95rem; min-height: 0; }
 .overview-training-grid .next-title { font-size: clamp(1.15rem, 2vw, 1.55rem); overflow-wrap: anywhere; }
-.overview-training-grid .schedule-summary { grid-template-columns: repeat(auto-fit,minmax(min(100%,9rem),1fr)); }
-.overview-training-grid .schedule-summary .stat-box b { white-space: normal; }
+.overview-training-grid .schedule-summary { display: block; margin: 0 0 .55rem; color: var(--muted); font-size: var(--text-caption); line-height: 1.55; }
 .overview-training-grid .schedule-more > summary { padding-block: .5rem; }
 .overview-training-aside .today-training-card { grid-column: auto; }
 .overview-training-aside .today-training-status { margin-top: .25rem; }
@@ -477,23 +476,24 @@ html{scroll-padding-top:116px}
 .recovery-contribution-panel > .quiet { margin: .35rem 0; }
 .recovery-contributions-grid { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: .5rem; align-items: start; }
 .recovery-contribution.analytics-card { padding: 0; min-width: 0; }
-.recovery-contribution > summary { display: grid; gap: .2rem; padding: .65rem; cursor: pointer; }
+.recovery-contribution > summary { display: grid; gap: .3rem; padding: .65rem; cursor: pointer; }
 .recovery-contribution > summary::after { content: "＋"; color: var(--cyan); grid-row: 1; grid-column: 2; }
 .recovery-contribution[open] > summary::after { content: "−"; }
 .recovery-contribution > summary > * { grid-column: 1; }
-.recovery-contribution summary strong { font-size: 1.05rem; }
 .recovery-contribution summary small { font-size: var(--text-caption); color: var(--muted); }
 .contribution-label { font-weight: 700; font-size: var(--text-detail); line-height: 1.3; }
 .contribution-detail { padding: 0 .65rem .65rem; overflow-wrap: anywhere; }
 .contribution-detail p { margin: .4rem 0; }
-#activity-goals .activity-goal-panel .goal-ring-copy { display: grid; gap: .35rem; }
+#activity-goals .goal-ring-layout { min-height: 7.25rem; gap: clamp(.75rem, 2vw, 1.25rem); padding-block: .45rem; }
+#activity-goals .activity-goal-panel .goal-ring-copy { display: grid; gap: .5rem; line-height: 1.45; }
+#daily-summary #overview { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
 #activity-goals .activity-goal-panel .goal-ring-center b { font-size: clamp(1rem, 1.8vw, 1.35rem); }
 @media (max-width: 64em) {
   #daily-signals { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .recovery-contributions-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
 }
 @media (max-width: 46em) {
-  .overview-training-grid { grid-template-columns: minmax(0,1fr); }
+  .overview-training-grid, #daily-summary #overview { grid-template-columns: minmax(0,1fr); }
   .recovery-contributions-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media (max-width: 22em) {

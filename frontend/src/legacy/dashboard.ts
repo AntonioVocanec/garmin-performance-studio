@@ -80,18 +80,13 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
     const score=sleep.score==null||sleep.score===""?null:Number(sleep.score),sleepValid=score!=null&&Number.isFinite(score),scoreLabel=!sleepValid?"Nema Sleep Score":score>=90?"Izvrsno":score>=80?"Dobro":score>=60?"Zadovoljavajuće":"Nisko",sleepTone=!sleepValid?"empty":score>=80?"good":score>=60?"watch":"low";
     const hrv=baseline.hrv||{},rhr=baseline.restingHeartRate||{},hrvDelta=hrv.delta==null?null:Number.isFinite(Number(hrv.delta))?Number(hrv.delta):null,rhrDelta=rhr.delta==null?null:Number.isFinite(Number(rhr.delta))?Number(rhr.delta):null,hrvRatio=hrv.current!=null&&Number(hrv.median28d)>0?Number(hrv.current)/Number(hrv.median28d):null,hrvClearlyBelow=hrvRatio!=null&&hrvRatio<0.9,hrvNearBase=hrvRatio!=null&&Math.abs(hrvRatio-1)<=0.1,rhrNearBase=rhrDelta!=null&&Math.abs(rhrDelta)<=3;
     const rawHrvStatus=String(recovery.hrvStatus||"").trim(),hrvStatusKey=rawHrvStatus.toLowerCase(),hrvStatusLabel=({balanced:"U ravnoteži",unbalanced:"Izvan ravnoteže",low:"Nizak",poor:"Nizak",strained:"Opterećen",unbalanced_low:"Nizak"})[hrvStatusKey]||rawHrvStatus||"Nema HRV statusa",recoveryTone=/unbalanced|low|poor|strained/.test(hrvStatusKey)?"watch":/balanced|optimal|good/.test(hrvStatusKey)?"good":"neutral";
-    const steps=recovery.steps??summary.steps,stepGoal=recovery.stepGoal,stepRatio=steps!=null&&stepGoal!=null&&Number(stepGoal)>0?Math.min(1,Number(steps)/Number(stepGoal)):null,weeklyMinutes=(Number(recovery.moderateMinutes7d)||0)+2*(Number(recovery.vigorousMinutes7d)||0),intensityGoal=Number(summary.intensityGoalMinutes),hasIntensityGoal=Number.isFinite(intensityGoal)&&intensityGoal>0,dailySource=payload.sources?.dailySummaries,hasWeeklyMinutes=dailySource?.ok===true&&!dailySource?.partial&&(recovery.moderateMinutes7d!=null||recovery.vigorousMinutes7d!=null),movementTone=stepRatio!=null&&stepRatio>=1?"good":"neutral";
-    const status=(label,tone)=>`<span class="health-status" data-tone="${tone}">${escapeHtml(label)}</span>`;
-    const detailParts=[];
-    if(sleepValid)detailParts.push(`san ${scoreLabel.toLowerCase()} · ${num(score)}/100`);
-    if(recovery.bodyBattery!=null)detailParts.push(`Body Battery ${num(recovery.bodyBattery)}`);
-    else if(hrvStatusKey)detailParts.push(`HRV ${hrvStatusLabel.toLowerCase()}`);
-    else if(recovery.hrvLastNight!=null)detailParts.push(`HRV ${num(recovery.hrvLastNight)} ms`);
-    if(stepRatio!=null)detailParts.push(`koraci ${num(steps)} / ${num(stepGoal)}`);
-    else if(hasWeeklyMinutes)detailParts.push(`${num(weeklyMinutes)} intenzivnih min · 7d`);
-    $("health-overview-title").textContent=detailParts.length?"San, oporavak i kretanje — u jednom pregledu":"Čekam dovoljno Garminovih zapisa";
-    $("health-overview-summary").textContent=detailParts.length?`${fmtIsoDay(end)} · ${detailParts.join(" · ")}.`:`Za odabrani dan još nema dovoljno podataka za sažetak.`;
-    const coverage=[sleep.totalSeconds!=null||sleepValid,recovery.bodyBattery!=null||recovery.hrvLastNight!=null||recovery.restingHeartRate!=null,steps!=null||hasWeeklyMinutes].filter(Boolean).length;
+    const dailySource=payload.sources?.dailySummaries;
+    const movementAvailable=(recovery.steps??summary.steps)!=null||(
+      dailySource?.ok===true&&!dailySource.partial&&(recovery.moderateMinutes7d!=null||recovery.vigorousMinutes7d!=null)
+    );
+    const coverage=[sleep.totalSeconds!=null||sleepValid,recovery.bodyBattery!=null||recovery.hrvLastNight!=null||recovery.restingHeartRate!=null,movementAvailable].filter(Boolean).length;
+    $("health-overview-title").textContent="Tjedne usporedbe i osobni uvid";
+    $("health-overview-summary").textContent=`${fmtIsoDay(end)} · zadnjih 7 dana prema prethodnih 7`;
     $("health-overview-coverage").textContent=`${coverage}/3`;
     const battery=recovery.bodyBattery==null?null:Number(recovery.bodyBattery),batteryRing=$("today-energy-ring"),batteryHistory=recovery.bodyBatteryHistory||{};
     $("today-energy").textContent=battery==null||!Number.isFinite(battery)?"—":num(battery,0);
@@ -125,37 +120,32 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
       : `Medijan ${num(rhr.median28d,1)} bpm · ${num(rhr.sampleDays)}/28 dana`;
     const restingChange=rhrDelta==null?"":`${rhrDelta>0?"+":rhrDelta<0?"−":""}${num(Math.abs(rhrDelta),1)} bpm prema bazi · `;
     $("today-rhr-context").textContent=resting==null?"Puls u mirovanju nije zabilježen":restingChange+restingContext;
-    const sleepDetail=[sleep.totalSeconds==null?null:duration(sleep.totalSeconds),debt.debtSeconds==null?null:`Sleep debt ${duration(debt.debtSeconds)} · ${num(debt.daysAvailable)}/${num(debt.daysExpected||14)} noći`].filter(Boolean).join(" · ")||"San nije zabilježen za ovaj dan.";
-    const recoveryDetail=[recovery.bodyBattery==null?null:`Body Battery ${num(recovery.bodyBattery)}/100`,recovery.hrvLastNight==null?null:`HRV ${num(recovery.hrvLastNight)} ms${hrv.median28d==null?"":` · baza ${num(hrv.median28d)} ms`}`,recovery.restingHeartRate==null?null:`Puls ${num(recovery.restingHeartRate)} bpm${rhr.median28d==null?"":` · baza ${num(rhr.median28d)} bpm`} `].filter(Boolean).join(" · ")||"Nema HRV, pulsa ni Body Battery zapisa.";
-    const movementDetail=[steps==null?null:`Koraci ${num(steps)}${stepGoal==null?"":` / cilj ${num(stepGoal)}`}`,hasWeeklyMinutes?`Intenzivne minute · 7d ${num(weeklyMinutes)}${hasIntensityGoal?` / ${num(intensityGoal)} min`:""}`:null].filter(Boolean).join(" · ")||"Kretanje nije zabilježeno.";
-    const movementStatus=stepRatio==null?(hasWeeklyMinutes?"Tjedni podaci dostupni":"Nema podataka"):stepRatio>=1?"Dnevni cilj koraka dosegnut":"Dnevni cilj u tijeku";
-    const meter=(value,color)=>value==null?"":`<div class="health-meter" aria-hidden="true"><i style="width:${Math.max(0,Math.min(100,value))}%;background:${color}"></i></div>`;
-    const pillar=(kind,title,value,label,tone,detail,progress,color,target)=>`<a class="health-pillar ${kind}" href="#${target}" aria-label="${escapeHtml(title)}: ${escapeHtml(value)}. Otvori detalje."><div class="health-pillar-top"><span class="health-pillar-icon" aria-hidden="true">${snapshotIcon(kind==="movement"?"training":kind)}</span>${status(label,tone)}</div><h4>${title}</h4><b class="health-pillar-value">${escapeHtml(value)}</b><p>${escapeHtml(detail)}</p>${meter(progress,color)}<span class="health-pillar-action">Otvori detalje ↗</span></a>`;
-    $("health-pillars").innerHTML=[
-      pillar("sleep","San",sleepValid?`${num(score)}/100`:"—",scoreLabel,sleepTone,sleepDetail,sleepValid?score:null,"#b9a2fa","sleep-recovery"),
-      pillar("recovery","Oporavak",recovery.bodyBattery==null?(recovery.hrvLastNight==null?"—":`${num(recovery.hrvLastNight)} ms`):`${num(recovery.bodyBattery)}/100`,hrvStatusLabel,recoveryTone,recoveryDetail,recovery.bodyBattery,chartColors.cyan,"sleep-recovery"),
-      pillar("movement","Kretanje",steps==null?"—":num(steps),movementStatus,movementTone,movementDetail,stepRatio==null?null:stepRatio*100,"#69d7ef","training-load"),
-    ].join("");
-
     let insightTitle="Signali su prikazani uz tvoju osobnu bazu",insightCopy="Uspoređuj više dana zajedno; jedna vrijednost sama ne određuje oporavak ni spremnost za trening.";
     if(debt.debtSeconds!=null&&Number(debt.debtSeconds)>0){insightTitle=`Sleep debt · ${duration(debt.debtSeconds)} u dostupnom prozoru`;insightCopy=`Prosjek sna zadnjih 7 dana: ${debt.average7dSeconds==null?"—":duration(debt.average7dSeconds)}. U izračun je uključeno ${num(debt.daysAvailable)}/${num(debt.daysExpected||14)} zabilježenih noći.`}
     else if(sleepValid&&score<60){insightTitle=`Garmin je ocijenio san s ${num(score)}/100`;insightCopy="Pogledaj trajanje sna, prethodni sleep debt i osobni trend prije zaključka o tome kako se osjećaš."}
     else if(hrvClearlyBelow||rhrDelta!=null&&rhrDelta>3){const parts=[];if(hrvClearlyBelow&&hrv.median28d!=null)parts.push(`HRV ${num(Math.abs(Number(hrv.current)-Number(hrv.median28d)))} ms ispod medijana`);if(rhrDelta!=null&&rhrDelta>3&&rhr.median28d!=null)parts.push(`Puls u mirovanju ${num(rhrDelta)} bpm iznad medijana`);insightTitle="Oporavak odstupa od dijela osobne baze";insightCopy=`${parts.join(" · ")||"Provjeri HRV status"}. Usporedi ove signale sa snom, opterećenjem i subjektivnim check-inom.`}
     else if(hrvNearBase&&rhrNearBase){insightTitle="Oporavak je blizu nedavne osobne baze";insightCopy=`HRV ${hrvDelta>=0?"iznad":"ispod"} medijana za ${num(Math.abs(hrvDelta))} ms · puls u mirovanju ${rhrDelta>=0?"iznad":"ispod"} medijana za ${num(Math.abs(rhrDelta))} bpm. To je kontekst, ne ocjena spremnosti.`}
-    $("health-insight-title").textContent=insightTitle;$("health-insight-copy").textContent=insightCopy;
+    $("health-insight-title").textContent=insightTitle;
+    $("health-insight-copy").textContent=insightCopy.split(/(?<=\.)\s+/u)[0];
     $("today-interpretation").textContent=insightTitle;
     $("today-interpretation").title=insightCopy;
     $("hero-executive-copy").textContent=insightCopy;
 
     const recentStart=isoShift(end,-6),previousEnd=isoShift(end,-7),previousStart=isoShift(end,-13);
-    const compare=(rows,key,formatter,unit="",target="sleep-recovery")=>{const recent=averageInRange(rows,key,recentStart,end),previous=averageInRange(rows,key,previousStart,previousEnd),delta=recent.value==null||previous.value==null?null:recent.value-previous.value;const change=delta==null?"Nema dovoljno podataka za usporedbu":changeMarkup(delta,`${delta>0?"+":delta<0?"−":""}${formatter(Math.abs(delta))}${unit} prema prethodnih 7 dana`);return`<a class="health-trend" href="#${target}" aria-label="${escapeHtml(formatter.label)}: otvori detalje"><span>${formatter.label}</span><b>${recent.value==null?"—":`${formatter(recent.value)}${unit}`}</b><small>${change}</small><em>${recent.count}/7 dana sada · ${previous.count}/7 prije</em></a>`};
+    const compare=(rows,key,formatter,unit="",target="sleep-recovery")=>{
+      const recent=averageInRange(rows,key,recentStart,end),previous=averageInRange(rows,key,previousStart,previousEnd);
+      const delta=recent.value==null||previous.value==null?null:recent.value-previous.value;
+      const change=delta==null?"Nedovoljno podataka":changeMarkup(delta,`${delta>0?"+":delta<0?"−":""}${formatter(Math.abs(delta))}${unit}`);
+      const valueText=value=>value==null?"—":formatter(value)+unit;
+      return `<a class="health-trend" href="#${target}"><span>${escapeHtml(formatter.label)}</span><b>${valueText(recent.value)} <small>· ${valueText(previous.value)}</small></b><small>${change}</small><em>${recent.count}/7 sada · ${previous.count}/7 prije</em></a>`;
+    };
     const hoursFormatter=value=>duration(value);hoursFormatter.label="Trajanje sna";
     const numberFormatter=value=>num(value,0);numberFormatter.label="HRV";
     const rhrFormatter=value=>num(value,0);rhrFormatter.label="Puls u mirovanju";
     const batteryFormatter=value=>num(value,0);batteryFormatter.label="Body Battery";
     const sleepRows=(sleep.history||[]).map(row=>({date:row.date,value:row.totalSeconds}));
     $("health-weekly-range").textContent=`${fmtIsoDay(recentStart)}–${fmtIsoDay(end)}`;
-    $("health-weekly-trends").innerHTML=[compare(sleepRows,"value",hoursFormatter),compare(trends,"hrv",numberFormatter," ms","hrv"),compare(trends,"restingHeartRate",rhrFormatter," bpm","rhr"),compare(trends,"bodyBattery",batteryFormatter,"","body-battery-day")].join("");
+    $("health-weekly-trends").innerHTML=[compare(sleepRows,"value",hoursFormatter),compare(trends,"hrv",numberFormatter," ms","lab-recovery-panel-baseline"),compare(trends,"restingHeartRate",rhrFormatter," bpm","lab-recovery-panel-baseline"),compare(trends,"bodyBattery",batteryFormatter,"","body-battery-day")].join("");
   };
   let skinTemperatureController=null;
   const skinDeviation=value=>value==null||!Number.isFinite(Number(value))?"—":`${Number(value)>0?"+":Number(value)<0?"−":""}${num(Math.abs(Number(value)),1)} °C`;
@@ -347,19 +337,17 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
     }
   };
   const snapshotCard=(target,kind,title,body)=>`<a class="snapshot-card ${kind}" href="#${target}"><span class="snapshot-heading"><span class="snapshot-icon" aria-hidden="true">${snapshotIcon(kind)}</span><span class="snapshot-title">${title}</span><span class="snapshot-link">Detalji <span aria-hidden="true">↗</span></span></span>${body}</a>`;
-  const signedDelta=(value,precision=0)=>value==null?"Nema baze":`${value>0?"+":value<0?"−":""}${num(Math.abs(value),precision)}`;
   const renderDailySnapshot=payload=>{
-    const n=payload.normalized||{},sleep=n.sleep||{},debt=n.sleepDebt||{},recovery=n.recovery||{},training=n.training||{},baseline=n.personalRecoveryBaseline||{},schedule=n.runnaSchedule||{},activitySource=payload.sources?.activities,activityUnavailable=activitySource?.ok===false;
-    const sleepValue=value=>value==null?"Nedostupno":value===0?"Bez manjka":duration(value);
-    const baselineLabel=(metric,unit,precision=0)=>metric?.delta==null?"Osobna baza nije dostupna":`${signedDelta(metric.delta,precision)} ${unit} prema medijanu · ${num(metric.sampleDays)}/28 d`;
-    const hrv=baseline.hrv||{},rhr=baseline.restingHeartRate||{};
-    const next=schedule.nextRun;
-    const nextText=next?`${fmtIsoDay(next.date)} · ${String(next.title||"Runna trening")}`:schedule.configured?"Nema nadolazećeg Runna treninga":"Runna kalendar nije povezan";
-    const sleepBody=`<span class="snapshot-values"><span class="snapshot-value"><strong class="cyan">${escapeHtml(sleep.score==null?"—":num(sleep.score))}</strong><span>Sleep Score</span></span><span class="snapshot-value"><strong class="violet">${escapeHtml(duration(sleep.totalSeconds))}</strong><span>Trajanje sna</span></span></span><span class="snapshot-footer"><b>Sleep Debt</b> ${escapeHtml(sleepValue(debt.debtSeconds))}<span class="snapshot-coverage">${num(debt.daysAvailable)}/${num(debt.daysExpected||14)} noći</span></span>`;
-    const recoveryBody=`<span class="snapshot-values three"><span class="snapshot-value"><strong class="lime">${escapeHtml(recovery.bodyBattery==null?"—":num(recovery.bodyBattery))}</strong><span>Body Battery</span></span><span class="snapshot-value"><strong class="mint">${escapeHtml(recovery.hrvLastNight==null?"—":`${num(recovery.hrvLastNight)} ms`)}</strong><span>Noćni HRV</span></span><span class="snapshot-value"><strong class="cyan">${escapeHtml(recovery.restingHeartRate==null?"—":`${num(recovery.restingHeartRate)} bpm`)}</strong><span>Puls u mirovanju</span></span></span><span class="snapshot-footer">HRV ${escapeHtml(baselineLabel(hrv,"ms"))}<br>Puls ${escapeHtml(baselineLabel(rhr,"bpm"))}</span>`;
-    const observedCount=Number(training.runCount7d)||0,emptyPartial=activitySource?.partial&&observedCount===0,trainingLoad=activityUnavailable||emptyPartial?null:training.trainingLoad7d,runDistance=activityUnavailable||emptyPartial?null:training.runDistance7dKm;
-    const trainingBody=`<span class="snapshot-values"><span class="snapshot-value"><strong class="amber">${escapeHtml(trainingLoad==null?"—":num(trainingLoad,0))}</strong><span>Opterećenje aktivnosti · 7 dana</span></span><span class="snapshot-value"><strong class="cyan">${escapeHtml(runDistance==null?"—":`${num(runDistance,1)} km`)}</strong><span>${activityUnavailable?"Povijest aktivnosti nije dostupna":activitySource?.partial?`Najmanje ${num(observedCount)} zabilježenih trčanja · 7 dana`:`${num(observedCount)} trčanja · 7 dana`}</span></span></span><span class="snapshot-footer"><b>Sljedeće trčanje</b><span class="snapshot-next">${escapeHtml(nextText)}</span></span>`;
-    $("overview").innerHTML=[snapshotCard("sleep-recovery","sleep","San",sleepBody),snapshotCard("sleep-recovery","recovery","Oporavak i energija",recoveryBody),snapshotCard("training-plan","training","Trening i plan",trainingBody)].join("");
+    const n=payload.normalized||{},debt=n.sleepDebt||{},training=n.training||{},activitySource=payload.sources?.activities;
+    const debtValue=debt.debtSeconds==null?"—":debt.debtSeconds===0?"Bez manjka":duration(debt.debtSeconds);
+    const debtCoverage=debt.daysAvailable==null?"Pokrivenost nije dostupna":`${num(debt.daysAvailable)}/${num(debt.daysExpected||14)} noći`;
+    const sleepBody=`<span class="snapshot-values"><span class="snapshot-value"><strong class="violet">${escapeHtml(debtValue)}</strong><span>${debtCoverage}</span></span></span>`;
+    const observedCount=Number(training.runCount7d)||0;
+    const activityUnavailable=activitySource?.ok===false,emptyPartial=activitySource?.partial&&observedCount===0;
+    const trainingLoad=activityUnavailable||emptyPartial?null:training.trainingLoad7d;
+    const runDistance=activityUnavailable||emptyPartial?null:training.runDistance7dKm;
+    const trainingBody=`<span class="snapshot-values"><span class="snapshot-value"><strong>${trainingLoad==null?"—":num(trainingLoad,0)}</strong><span>Opterećenje aktivnosti · 7 dana</span></span><span class="snapshot-value"><strong class="cyan">${runDistance==null?"—":`${num(runDistance,1)} km`}</strong><span>${activityUnavailable?"Povijest aktivnosti nije dostupna":activitySource?.partial?`Najmanje ${num(observedCount)} zabilježenih trčanja · 7 dana`:`${num(observedCount)} trčanja · 7 dana`}</span></span></span>`;
+    $("overview").innerHTML=[snapshotCard("sleep-recovery","sleep","Sleep Debt",sleepBody),snapshotCard("training-load","training","Trening · 7 dana",trainingBody)].join("");
   };
   const sourceNames={profile:"Garmin profil",dailySummaries:"Dnevni sažeci",sleep:"San · danas",sleepHistory:"Povijest sna",bodyBattery:"Body Battery",heartRate:"Puls",hrv:"HRV",stress:"Stres",steps:"Koraci",hydration:"Hidratacija",spo2:"SpO₂",activities:"Aktivnosti",fitnessAge:"Dob kondicije",heartRateZones:"Pulsne zone",wellnessActivity:"Zdravstveni sažeci",activityDetail:"Detalji zadnje aktivnosti",activityWorkout:"Strukturirani Garmin trening",garminTraining:"Garminove napredne metrike",runnaCalendar:"Runna kalendar",runnaArchive:"Lokalna arhiva plana"};
   const renderSourceAvailability=sources=>{
@@ -419,7 +407,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
       const count=Number(p.runCount)||0,coverage=Number(p.distanceCoverage)||0;
       const km=p.knownDistanceKm==null?"":num(p.knownDistanceKm,1)+" km";
       const coverageNote=count&&coverage<count?" · udaljenost za "+coverage+"/"+count:"";
-      return '<div class="stat-box"><b>'+count+(count===1?' trčanje':' trčanja')+(km?' · '+km:"")+'</b><span>'+label+(coverageNote?coverageNote:"")+'</span></div>';
+      return escapeHtml(label+": "+count+(count===1?" trčanje":" trčanja")+(km?" / "+km:"")+coverageNote);
     };
     const details=e=>{
       const desc=String(e?.description||"").trim();
@@ -435,7 +423,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
     const nextRow=upcoming.length?row(upcoming[0],0):"";
     const laterRows=upcoming.slice(1).map((event,index)=>row(event,index+1)).join("");
     const rows=nextRow+(laterRows?'<details class="run-info schedule-more"><summary>Ostali planirani treninzi</summary>'+laterRows+'</details>':"");
-    const planStats=planStat("sljedećih 7 dana",s.plan7d)+planStat("sljedećih 14 dana",s.plan14d);
+    const planStats=[planStat("Sljedećih 7 dana",s.plan7d),planStat("sljedećih 14 dana",s.plan14d)].filter(Boolean).join(" · ");
     const stats=planStats?'<div class="schedule-summary">'+planStats+'</div>':"";
     if(next){
       const nextDuration=durationText(next),nextDistance=distanceText(next),nextPace=paceText(next),href=safeRunnaUrl(next);
@@ -444,7 +432,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
       const nextSummary=`${runTypeText(next)} prema Runna planu.`;
       const nextDetails=desc?'<details class="run-info"><summary>Izvorne Runna upute</summary><div>'+escapeHtml(desc)+'</div></details>':"";
       const link=href?'<a class="runna-link" href="'+escapeHtml(href)+'" target="_blank" rel="noopener noreferrer">Otvori trening u Runni ↗</a>':"";
-      $("schedule").innerHTML='<div class="next-run"><div class="schedule-kicker">Sljedeće planirano trčanje</div><div class="next-title">'+escapeHtml(next.title)+'</div><div class="next-date">'+escapeHtml(fmtIsoDay(next.date))+' · '+(next.allDay?"Termin nije zadan":escapeHtml(fmtDateTime(next.start)))+'</div>'+(facts.length?'<div class="next-facts">'+facts.map(x=>'<span class="badge">'+escapeHtml(x)+'</span>').join("")+'</div>':"")+'<div class="next-desc">'+escapeHtml(nextSummary)+'</div>'+nextDetails+(link?'<div class="next-actions">'+link+'</div>':"")+'</div><div class="schedule-list">'+stats+(rows||'<div class="quiet">Nema drugih nadolazećih trčanja u feedu.</div>')+'</div>';
+      $("schedule").innerHTML='<div class="next-run"><div class="schedule-kicker">Sljedeće planirano trčanje</div><div class="next-title">'+escapeHtml(next.title)+'</div><div class="next-date">'+escapeHtml([fmtIsoDay(next.date),next.allDay?"Termin nije zadan":fmtDateTime(next.start),...facts].filter(Boolean).join(" · "))+'</div>'+'<div class="next-desc">'+escapeHtml(nextSummary)+'</div>'+nextDetails+(link?'<div class="next-actions">'+link+'</div>':"")+'</div><div class="schedule-list">'+stats+(rows||'<div class="quiet">Nema drugih nadolazećih trčanja u feedu.</div>')+'</div>';
       return;
     }
     $("schedule").innerHTML='<div><div class="schedule-kicker">Runna feed povezan</div><div class="next-title">Nema nadolazećeg trčanja</div><div class="next-date">Provjereno '+escapeHtml(new Date().toLocaleString("hr-HR"))+'</div></div><div class="schedule-list">'+stats+'<div class="quiet">U feedu zasad nema budućih događaja označenih kao trčanje. Ostale nadolazeće Runna sesije: '+num((s.upcomingEvents||[]).length)+'</div></div>';
@@ -1374,7 +1362,7 @@ let ecgSelectionController=null,selectedEcgId=null,ecgReadingsById=new Map(),ecg
     if(activeController)activeController.abort();activeController=new AbortController();void loadSkinTemperature(dateInput.value,forceRefresh);void loadGarminProfile(dateInput.value,forceRefresh);const button=$("refresh");button.disabled=true;button.textContent="Učitavam…";$("api-status").innerHTML='<i class="dot"></i>Učitavam Garmin';$("api-status").className="status";
     try{
       const target=dateInput.value;const payload=await getDashboard(target,forceRefresh,activeController.signal);if(payload.date!==dateInput.value)return;render(payload);publishDashboard(payload);window.dispatchEvent(new Event("dashboard:content-updated"));await loadJournal(target);
-    }catch(error){if(error.name==="AbortError")return;$("source-warning")?.setAttribute("hidden","");const offline=!navigator.onLine,message=offline?"Poveži se s kućnim računalom putem Tailscalea pa osvježi.":error.message;$("api-status").textContent=offline?"Izvan mreže":"Pogreška pri učitavanju";$("api-status").className="status error";$("today-interpretation").textContent="Pregled zdravlja nije dostupan";$("hero-executive-copy").textContent=message;$("health-overview-title").textContent="Pregled zdravlja nije dostupan";$("health-overview-summary").textContent=message;$("health-overview-coverage").textContent="—";$("health-pillars").innerHTML=`<div class="empty-chart">${escapeHtml(message)}</div>`;$("health-insight-title").textContent="Čekam novu vezu s Garmin podacima";$("health-insight-copy").textContent="Zdravstveni signali i tjedni trendovi prikazat će se nakon osvježavanja.";$("health-weekly-trends").innerHTML="";$("overview").innerHTML=`<article class="metric error">${escapeHtml(message)}</article>`;$("schedule").innerHTML=`<div class="error">${offline?"Dashboard je izvan mreže.":"Provjeri Garmin ključ i API pristup."}</div>`}
+    }catch(error){if(error.name==="AbortError")return;$("source-warning")?.setAttribute("hidden","");const offline=!navigator.onLine,message=offline?"Poveži se s kućnim računalom putem Tailscalea pa osvježi.":error.message;$("api-status").textContent=offline?"Izvan mreže":"Pogreška pri učitavanju";$("api-status").className="status error";$("today-interpretation").textContent="Pregled zdravlja nije dostupan";$("hero-executive-copy").textContent=message;$("health-overview-title").textContent="Pregled zdravlja nije dostupan";$("health-overview-summary").textContent=message;$("health-overview-coverage").textContent="—";$("health-insight-title").textContent="Čekam novu vezu s Garmin podacima";$("health-insight-copy").textContent="Zdravstveni signali i tjedni trendovi prikazat će se nakon osvježavanja.";$("health-weekly-trends").innerHTML="";$("overview").innerHTML=`<article class="metric error">${escapeHtml(message)}</article>`;$("schedule").innerHTML=`<div class="error">${offline?"Dashboard je izvan mreže.":"Provjeri Garmin ključ i API pristup."}</div>`}
     finally{button.disabled=false;button.textContent="Osvježi podatke"}
   };
   let bloodLabAnalysis=null,bloodLabAiConfigured=false,bloodLabAiStatus=null,bloodLabBusy=false,bloodLabFiles=[];

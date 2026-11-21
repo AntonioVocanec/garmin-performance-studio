@@ -1,8 +1,16 @@
 <script lang="ts">
  import {onMount} from 'svelte';
- import {dashboardSnapshot,numberText,selectedDate,type RecoveryContributions} from '../lib/analyticsApi';
+ import {dashboardSnapshot,numberText,selectedDate,type Contribution,type RecoveryContributions} from '../lib/analyticsApi';
  let data=$state<RecoveryContributions|null>(null);
  const display=(v:number|null,unit:string)=>{if(v==null)return '—';if(unit!=='s')return `${numberText(v)} ${unit}`;const minutes=Math.round(Math.abs(v)/60);return `${v<0?'−':''}${Math.floor(minutes/60)} h ${minutes%60} min`};
+ function compactStatus(signal: Contribution) {
+  if (signal.value === null) return 'Nema zapisa';
+  if (signal.partial) return 'Djelomični podaci';
+  if (signal.delta === 0) return 'Na medijanu';
+  if (signal.delta !== null) return `${signal.delta > 0 ? '+' : '−'}${display(Math.abs(signal.delta), signal.unit)} prema bazi`;
+  if (signal.expectedDays > 1) return `${signal.sampleDays}/${signal.expectedDays} dana`;
+  return 'Dostupno';
+ }
  onMount(()=>{
   const update=(p:Record<string,unknown>|null)=>{data=p?.date===selectedDate()?((p?.normalized as Record<string,unknown>)?.recoveryContributions as RecoveryContributions)??null:null};
   update(dashboardSnapshot);const change=()=>{data=null};const receive=(e:Event)=>update((e as CustomEvent<Record<string,unknown>>).detail);
@@ -18,10 +26,12 @@
    <details class="analytics-card recovery-contribution">
     <summary>
      <span class="contribution-label">{signal.label}</span>
-     <strong>{display(signal.value,signal.unit)}</strong>
-     <small>{signal.value === null ? 'Nema zapisa' : signal.expectedDays > 1 ? `${signal.sampleDays}/${signal.expectedDays} dana` : signal.partial ? 'Djelomično' : 'Zabilježeno'}</small>
+     <small>{compactStatus(signal)}</small>
     </summary>
     <div class="contribution-detail">
+    {#if signal.value !== null}
+     <p><strong>{display(signal.value, signal.unit)}</strong></p>
+    {/if}
     <p>{signal.note}</p>
     {#if signal.baseline!==null}
      <p>Osobni medijan {display(signal.baseline,signal.unit)}{#if signal.delta!==null} · {signal.delta>0?'+':''}{display(signal.delta,signal.unit)}{/if} · {signal.baselineDays}/28 dana.</p>

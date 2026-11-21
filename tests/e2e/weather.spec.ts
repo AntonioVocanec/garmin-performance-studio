@@ -37,7 +37,7 @@ for (const width of [320, 390, 836, 1440]) {
     await page.locator(weatherToggle).focus();
     await page.keyboard.press('Enter');
     await expect(page.locator(weatherToggle)).toHaveAttribute('aria-expanded', 'true');
-    await expect(panel.getByRole('heading')).toContainText(/21\.\s*11\..*27\.\s*11\./);
+    await expect(panel.locator('.forecast-meta')).toContainText(/21\.\s*11\..*27\.\s*11\./);
     const items = panel.getByRole('listitem');
     await expect(items).toHaveCount(7);
     await expect(items.first().locator('time')).toHaveText('Danas');
@@ -89,7 +89,7 @@ test('cached forecast identifies the last update and source', async ({page}) => 
   await page.route('**/api/weather/forecast', route => route.fulfill({json:{...response,stale:true}}));
   await page.goto('/');
   await page.locator(weatherToggle).click();
-  await expect(page.locator('.forecast footer')).toContainText('Zadnja dostupna prognoza u 08:00');
+  await expect(page.locator('.forecast .forecast-meta')).toContainText('Zadnja dostupna prognoza u 08:00');
   await expect(page.locator('.forecast a')).toHaveAttribute('href','https://open-meteo.com/');
 });
 
@@ -130,8 +130,11 @@ test('selects a forecast day and switches its temperature, rain and wind', async
   await panel.locator('.day').nth(1).click();
   await expect(panel.locator('.summary')).toContainText('Dnevna prognoza');
   await expect(panel.locator('.slot b').first()).toHaveText('1°');
+  await expect(panel.locator('.timeline svg line').first()).toHaveAttribute('stroke-width', '2.75');
+  await expect(panel.locator('.timeline svg polygon').first()).toHaveAttribute('fill', 'url(#forecast-temperature-fill)');
   await panel.getByRole('button',{name:'Oborine',exact:true}).click();
   await expect(panel.locator('.slot b').first()).toHaveText('0%');
+  await expect(panel.locator('.slot i').first()).toHaveCSS('height', '1px');
   await panel.getByRole('button',{name:'Vjetar',exact:true}).click();
   await expect(panel.locator('.arrow').first()).toHaveAttribute('aria-label','Vjetar iz smjera 90°');
   await expect(panel.locator('.slot b').first()).toHaveText('11');

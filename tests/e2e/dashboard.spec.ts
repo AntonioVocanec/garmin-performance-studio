@@ -45,13 +45,16 @@ test("renders Garmin and Runna overview without browser errors", async ({ page }
   await expect(page.locator("#daily-summary details")).not.toHaveAttribute("open", "");
   await expect(page.locator("#activity-goals .layout-3")).toBeVisible();
   await expect(page.locator("#health-overview .health-deep-dive")).not.toHaveAttribute("open", "");
-  await expect(page.locator("#overview .snapshot-card")).toHaveCount(3);
-  await expect(page.locator("#overview .snapshot-card").nth(0)).toContainText("Sleep Debt");
-  await expect(page.locator("#overview .snapshot-card").nth(0)).toContainText("1 h 30 min");
-  await expect(page.locator("#overview .snapshot-card").nth(1)).toContainText("64 ms");
-  await expect(page.locator("#overview .snapshot-card").nth(1)).toContainText("−2 ms prema medijanu");
-  await expect(page.locator("#overview .snapshot-card").nth(2)).toContainText("Easy run · 5 km");
-  await expect(page.locator("#overview .snapshot-card").nth(2)).toHaveAttribute("href", "#training-plan");
+  const dailyCards = page.locator("#overview .snapshot-card");
+  await expect(dailyCards).toHaveCount(2);
+  await expect(dailyCards.first()).toContainText("Sleep Debt");
+  await expect(dailyCards.first()).toContainText("1 h 30 min");
+  await expect(dailyCards.nth(1)).toContainText("Opterećenje aktivnosti");
+  await expect(dailyCards.nth(1)).toHaveAttribute("href", "#training-load");
+  await expect(page.locator("#overview")).not.toContainText(/64 ms|43 bpm|6 h 30 min|Easy run/);
+  const linkBottoms = await page.locator("#daily-signals .today-hero-link").evaluateAll(links =>
+    links.map(link => link.getBoundingClientRect().bottom));
+  expect(Math.max(...linkBottoms) - Math.min(...linkBottoms)).toBeLessThanOrEqual(1);
   const scheduleRows = page.locator("#schedule .schedule-row");
   await expect(scheduleRows).toHaveCount(3);
   await expect(scheduleRows.nth(0)).toBeVisible();
@@ -506,6 +509,11 @@ test("opens and positions a direct link to a collapsed section on mobile", async
 
 test("switches dashboard views accessibly and resizes charts when a view opens", async ({ page }) => {
   await mockDashboardApi(page);
+  await page.route("**/api/skin-temperature**", route => {
+    const date = new URL(route.request().url()).searchParams.get("date");
+    return route.fulfill({json:{ok:true,data:{date,periodStart:date,periodEnd:date,
+      history:[{date,deviationC:0}],currentDeviationC:0,medianDeviationC:0,nightsAvailable:1,nightsExpected:28}}});
+  });
   await page.goto("/");
 
   const overviewTab = page.getByRole("tab", { name: "Pregled" });
@@ -542,7 +550,11 @@ test("switches dashboard views accessibly and resizes charts when a view opens",
 
   await overviewTab.click();
   await page.locator("#health-overview .health-deep-summary").click();
-  await page.locator('#health-pillars a.health-pillar.recovery[href="#sleep-recovery"]').click();
+  const health = page.locator("#health-overview .health-deep-dive");
+  await expect(health.locator("#overview-skin-context")).toContainText("0 °C");
+  await expect(health.locator("#health-overview-summary")).not.toContainText(/Body Battery|koraci|82\/100/);
+  await expect(health.locator(".health-trend").first()).toContainText(/\/7 sada · .*\/7 prije/);
+  await health.locator('.health-trend[href="#sleep-recovery"]').first().click();
   await expect(labTab).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveURL(/#sleep-recovery$/);
 });

@@ -191,9 +191,14 @@
 <svelte:window onresize={hidePlan} />
 
 <section class="forecast" aria-labelledby="forecast-heading">
-  <h2 id="forecast-heading">Prognoza za Bjelovar
-    {#if forecast}<small>{rangeDate.format(noon(forecast.days[0].date))} – {rangeDate.format(noon(forecast.days[6].date))}</small>{/if}
-  </h2>
+  <h2 id="forecast-heading">Prognoza za Bjelovar</h2>
+  {#if forecast}
+    <p class="forecast-meta">
+      {rangeDate.format(noon(forecast.days[0].date))} – {rangeDate.format(noon(forecast.days[6].date))} ·
+      <a href="https://open-meteo.com/">Open-Meteo</a> ·
+      {forecast.stale ? 'Zadnja dostupna prognoza u' : 'Osvježeno u'} {localTime.format(new Date(forecast.updatedAt))}
+    </p>
+  {/if}
   {#if forecast}
     {#if day}
       <div class="summary">
@@ -204,10 +209,10 @@
           {#if current}<span>Vlažnost {quantity(current.humidity, ' %')}</span><span>Vjetar {quantity(current.wind, ' km/h')}</span>
           {:else}<span>Najniža {quantity(day.low, ' °C')}</span>{/if}
         </div>
-        <div class="when"><b>{current ? 'Trenutačno' : 'Dnevna prognoza'}</b>
-          <span>{weekday.format(noon(day.date))} {rangeDate.format(noon(day.date))} {current?.time.slice(11,16) ?? ''}</span>
-          <span>{night && current?.code !== 0 ? 'Djelomice oblačno' : symbol?.[2] ?? 'Opis vremena nije dostupan'}</span>
-        </div>
+        <p class="when">{current ? 'Trenutačno' : 'Dnevna prognoza'} · {weekday.format(noon(day.date))} {rangeDate.format(noon(day.date))}
+          {#if current} {current.time.slice(11,16)}{/if}
+          · {night && current?.code !== 0 ? 'Djelomice oblačno' : symbol?.[2] ?? 'Opis vremena nije dostupan'}
+        </p>
       </div>
       <div class="modes" role="group" aria-label="Prikaz satne prognoze">
         {#each metrics as key}<button aria-pressed={key === metric} onclick={() => metric = key}>{labels[key]}</button>{/each}
@@ -216,11 +221,17 @@
         <div class="timeline" aria-label={labels[metric]} style:--count={slots.length}>
           {#if metric === 'temp'}
             <svg viewBox="0 0 100 65" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="forecast-temperature-fill" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="0" y2="65">
+                  <stop stop-color="#f1c447" stop-opacity=".34"/>
+                  <stop offset="1" stop-color="#f1c447" stop-opacity=".06"/>
+                </linearGradient>
+              </defs>
               {#each slots as h,i}
                 {@const next = slots[i+1]}
                 {#if h.temp !== null && next && next.temp !== null}
-                  <polygon fill="#e4bb482d" points={point(i,h.temp)+' '+point(i+1,next.temp)+' '+((i+1.5)/slots.length*100)+',65 '+((i+.5)/slots.length*100)+',65'}/>
-                  <line x1={(i+.5)/slots.length*100} x2={(i+1.5)/slots.length*100} y1={62-(h.temp-lower)/(upper-lower)*54} y2={62-(next.temp-lower)/(upper-lower)*54} stroke="#f1c447" stroke-width="2" vector-effect="non-scaling-stroke"/>
+                  <polygon fill="url(#forecast-temperature-fill)" points={point(i,h.temp)+' '+point(i+1,next.temp)+' '+((i+1.5)/slots.length*100)+',65 '+((i+.5)/slots.length*100)+',65'}/>
+                  <line x1={(i+.5)/slots.length*100} x2={(i+1.5)/slots.length*100} y1={62-(h.temp-lower)/(upper-lower)*54} y2={62-(next.temp-lower)/(upper-lower)*54} stroke="#f1c447" stroke-width="2.75" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
                 {/if}
               {/each}
             </svg>
@@ -230,7 +241,7 @@
               <b>{quantity(hour[metric],metric === 'temp' ? '°' : metric === 'rain' ? '%' : '')}</b>
               {#if metric === 'wind'}<span class="wind-unit">km/h</span>
                 <span class="arrow" aria-label={hour.direction == null ? 'Smjer nepoznat' : 'Vjetar iz smjera '+hour.direction+'°'} style:transform={'rotate('+((hour.direction ?? 0)+180)+'deg)'}>{hour.direction != null && hour.wind !== 0 ? '↑' : '·'}</span>
-              {:else if metric === 'rain' && hour.rain !== null}<i style:height={(1 + hour.rain * .48)+'px'}></i>{/if}
+              {:else if metric === 'rain' && hour.rain !== null}<i style:height={(1 + hour.rain * .78)+'px'}></i>{/if}
               <small>{hour.time.slice(11,16)}</small>
             </div>
           {/each}
@@ -291,10 +302,6 @@
         </div>
       {/if}
     </div>
-    <footer>
-      <a href="https://open-meteo.com/">Open-Meteo</a>
-      {#if forecast.stale} · Zadnja dostupna prognoza u {localTime.format(new Date(forecast.updatedAt))}{/if}
-    </footer>
   {:else}
     <p role="status">{loading ? 'Učitavam prognozu…' : 'Prognoza trenutačno nije dostupna'}</p>
   {/if}
@@ -303,7 +310,7 @@
 <style>
   .forecast { min-width: 0; }
   h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; margin: 0 0 .6rem; font-size: 1rem; }
-  small, footer { font-size: var(--text-caption); font-weight: 500; color: var(--muted); }
+  small { font-size: var(--text-caption); font-weight: 500; color: var(--muted); }
   .day-strip { position: relative; }
   .training-tip {
     position: absolute;
@@ -335,27 +342,34 @@
   .degrees {font-size:clamp(2rem,5vw,3.3rem);line-height:1;font-weight:550}
   .degrees small {vertical-align:top}
   .facts,.when {display:grid;font-size:var(--text-detail);color:var(--muted)}
-  .when {margin-left:auto;text-align:right}.when b{color:var(--text)}
-  .modes {display:flex;gap:1rem;margin:.7rem 0 .3rem}
-  .modes button,.day {background:transparent;color:var(--text);border:none;cursor:pointer}
-  .modes button {font-size:var(--text-detail);padding:.5rem 0;border-bottom:3px solid transparent}
-  .modes button[aria-pressed=true]{border-color:#edbf4a}
-  .timeline {position:relative;display:grid;grid-template-columns:repeat(var(--count),minmax(0,1fr));margin:.7rem 0 1rem}
-  .timeline svg {position:absolute;top:26px;width:100%;height:55px;pointer-events:none}
-  .slot {position:relative;height:106px;text-align:center;font-size:var(--text-detail)}
-  .slot small,.slot i,.arrow,.wind-unit {position:absolute;left:0;right:0}
-  .slot small {bottom:0}.slot i{bottom:25px;background:#76baff}.arrow{top:44px;font-size:1.3rem}.wind-unit{top:20px;font-size:var(--text-caption);color:var(--muted)}
+  .when { display: block; flex: 1 1 13rem; margin: 0; text-align: right; }
+  .forecast-meta { margin: -.3rem 0 .55rem; font-size: var(--text-caption); color: var(--muted); line-height: 1.5; }
+  .modes { display: flex; flex-wrap: wrap; gap: .35rem; margin: .65rem 0; }
+  .modes button,.day { background: transparent; color: var(--text); border: none; cursor: pointer; }
+  .modes button { min-height: 38px; padding: .35rem .65rem; border: 1px solid var(--line); border-radius: .55rem; font-size: var(--text-caption); }
+  .modes button[aria-pressed=true] { border-color: var(--cyan); background: rgba(105,215,239,.09); font-weight: 700; }
+  .timeline { position: relative; display: grid; grid-template-columns: repeat(var(--count),minmax(0,1fr)); margin: .75rem 0 1rem; }
+  .timeline svg { position: absolute; top: 25px; width: 100%; height: 86px; pointer-events: none; }
+  .slot { position: relative; height: 140px; text-align: center; font-size: var(--text-detail); }
+  .slot small,.slot i,.arrow,.wind-unit { position: absolute; left: 0; right: 0; }
+  .slot small { bottom: 0; }
+  .slot i { bottom: 29px; left: 18%; right: 18%; border-top: 1px solid #9acfff; border-radius: 3px 3px 0 0; background: linear-gradient(#76baffb3,#76baff1a); }
+  .arrow { top: 55px; font-size: 1.3rem; }
+  .wind-unit { top: 20px; font-size: var(--text-caption); color: var(--muted); }
   .missing {padding:1rem 0}
   .day[aria-pressed=true]{background:#25363d;border-radius:.6rem;box-shadow:inset 0 0 0 1px var(--line)}
   .day:focus-visible,.modes button:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
-  @media(max-width:520px){.when{width:100%;display:flex;flex-wrap:wrap;gap:.5rem;text-align:left}.slot small{font-size:var(--text-caption)}.timeline{overflow-x:auto;grid-template-columns:repeat(var(--count),minmax(0,1fr))}.slot small{letter-spacing:-.05em}}
+  @media(max-width:520px) {
+    .when { flex-basis: 100%; text-align: left; }
+    .slot small { font-size: .7rem; }
+    .modes button { padding-inline: .45rem; }
+  }
   .day {width:100%;display: grid; justify-items: center; gap: .15rem; padding: .35rem .15rem; font-size: var(--text-detail); white-space: nowrap; font-variant-numeric: tabular-nums; }
   li + li { border-left: 1px solid var(--line); }
   li:first-child time { color: var(--cyan); }
   time { font-weight: 700; }
   .icon { font-size: 1.65rem; }
   .low { color: var(--muted); }
-  footer { margin-top: .5rem; }
   a { color: var(--muted); }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 </style>

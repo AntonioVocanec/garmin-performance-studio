@@ -33,7 +33,10 @@ test('recovery cards show values and relevant coverage without technical metadat
 
  const panel=page.locator('#recovery-contributions');
  const cards=panel.locator('.recovery-contribution');
- await expect(cards.nth(1).locator('summary')).toContainText('0 h 0 min');
+ await expect(cards.nth(0).locator('summary')).toContainText('Dostupno');
+ await expect(cards.nth(1).locator('summary')).toContainText('13/14 dana');
+ await expect(cards.nth(0).locator('summary')).not.toContainText('60 ms');
+ await expect(cards.nth(1).locator('summary')).not.toContainText('0 h 0 min');
  await expect(cards.nth(2).locator('summary')).toContainText('Nema zapisa');
  await expect(cards.nth(0).locator('.contribution-detail')).toBeHidden();
  for (const card of await cards.all()) await card.locator('summary').click();
