@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import server as core
+from weather_forecast import ForecastUnavailable, forecast
 
 logger = logging.getLogger("garmin-dashboard.backups")
 _lab_ai_status_lock = threading.Lock()
@@ -348,6 +349,14 @@ def remove_blood_lab_report(report_id: str) -> dict[str, bool]:
         return {"ok": True}
     except sqlite3.Error as exc:
         raise HTTPException(status_code=500, detail="Nalaz nije moguće ukloniti iz arhive.") from exc
+
+
+@app.get("/api/weather/forecast", tags=["weather"])
+def weather_forecast() -> dict:
+    try:
+        return forecast.get()
+    except ForecastUnavailable as exc:
+        raise HTTPException(status_code=503, detail="Prognoza trenutačno nije dostupna") from exc
 
 
 @app.get("/api/health", tags=["status"])

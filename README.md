@@ -4,7 +4,7 @@ Garmin Performance Studio je lokalna web-aplikacija za pregled zdravlja, trening
 
 ## Što aplikacija nudi
 
-- **Pregled** donosi dnevni kontekst, san, oporavak i sljedeći trening.
+- **Pregled** donosi dnevni kontekst, san, oporavak i sljedeći trening. Ispod osobnog uvida prikazuje sedmodnevnu prognozu za Bjelovar iz Open-Metea, uvijek od današnjeg lokalnog datuma.
 - **Trening & Load** prikazuje aktivnosti, opterećenje, kalendar, trendove i detalje odabranih aktivnosti.
 - **Prehrana** povezuje dnevnik, recepte, planiranje obroka, pripremu, zalihe i kupovinu. USDA pretraga i AI prijedlozi recepata opcionalni su.
 - **Laboratorij** sadrži zdravstvene trendove, mjerenja i opcionalnu analizu učitanih PDF nalaza uz korisničku potvrdu.

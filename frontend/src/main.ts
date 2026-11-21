@@ -1,5 +1,6 @@
 import { mount } from "svelte";
 import App from "./App.svelte";
+import WeatherForecast from "./WeatherForecast.svelte";
 import NutritionShell from "./nutrition/NutritionShell.svelte";
 import { initializeDashboardViews } from "./lib/dashboardViews";
 import { startLegacyDashboard } from "./legacy/dashboard";
@@ -16,6 +17,8 @@ if (!connectivityRoot) throw new Error("Svelte dashboard root is missing.");
 
 mount(App, { target: connectivityRoot });
 initializeDashboardViews();
+const weatherRoot = document.getElementById("weather-root");
+if (weatherRoot) mount(WeatherForecast, { target: weatherRoot });
 startLegacyDashboard();
 const nutritionRoot = document.getElementById("nutrition-root");
 if (nutritionRoot) mount(NutritionShell, { target: nutritionRoot });

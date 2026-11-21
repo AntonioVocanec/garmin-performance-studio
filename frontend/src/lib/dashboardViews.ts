@@ -146,10 +146,12 @@ export function initializeDashboardViews(): void {
     panel.tabIndex = -1;
     panel.hidden = index !== 0;
 
-    const heading = document.createElement("header");
-    heading.className = "dashboard-view-heading";
-    heading.innerHTML = `<div><span class="eyebrow">${String(index + 1).padStart(2, "0")} / ${view.label}</span><h2>${view.title}</h2><p>${view.description}</p></div>`;
-    if (view.id !== "nutrition") panel.append(heading);
+    if (view.id !== "nutrition" && view.id !== "overview") {
+      const heading = document.createElement("header");
+      heading.className = "dashboard-view-heading";
+      heading.innerHTML = `<div><span class="eyebrow">${String(index + 1).padStart(2, "0")} / ${view.label}</span><h2>${view.title}</h2><p>${view.description}</p></div>`;
+      panel.append(heading);
+    }
     panels.set(view.id, panel);
   }
 

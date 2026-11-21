@@ -335,6 +335,7 @@ export function dashboardPayload(date: string) {
 }
 
 export async function mockDashboardApi(page: import("@playwright/test").Page, options: { eventPatternFixture?: boolean; activitySourceMode?: "failed" | "partial" | "empty"; hydrationMode?: "zero" | "unavailable" } = {}) {
+  await page.route("**/api/weather/forecast", route => route.fulfill({ json: { days: [], stale: false } }));
   const dashboardDates: string[] = [];
   const journalWrites: Record<string, unknown>[] = [];
   const lifeEventWrites: Record<string, unknown>[] = [];
