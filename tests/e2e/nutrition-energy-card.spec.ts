@@ -27,12 +27,17 @@ for (const [width,kcal,target,remaining,caption] of [
     await page.goto('/#nutrition-overview');
     const card=page.getByRole('article',{name:'Energija'});
     await expect(card.locator('.reading strong')).toHaveText(remaining);
+    const energyBox=await card.boundingBox();
+    const diaryBox=await page.locator('#nutrition-diary').boundingBox();
+    expect(diaryBox!.y).toBeGreaterThanOrEqual(energyBox!.y+energyBox!.height);
+    expect(Math.abs(diaryBox!.x-energyBox!.x)).toBeLessThan(2);
     await expect(card.locator('.reading small')).toHaveText(caption);
     await expect(card.locator('.side').last().locator('strong')).toHaveText(width===320?'—':width===1440?'0':'701');
     await expect(card.getByText('70 / 330 g')).toBeVisible();
     await expect(card.getByText('4 g',{exact:true})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
     await card.screenshot({path:info.outputPath('energija.png')});
+    if(width===1440)await page.screenshot({path:info.outputPath('moj-dan-desktop.png')});
     const toggle=card.getByRole('switch',{name:'Dnevnik je potpun'});
     await toggle.press('Space');
     await expect(toggle).toBeChecked();

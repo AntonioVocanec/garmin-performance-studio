@@ -57,21 +57,19 @@
   color: #e8faff;
   font-weight: 700;
 }
+.nutrition.daily-layout {
+  width: min(100%, 56rem);
+  margin-inline: auto;
+}
 .nutrition-day {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 .nutrition-day-summary {
   display: grid;
   gap: 12px;
-  grid-column: 2;
-  grid-row: 1;
-}
-.nutrition-day-meals {
-  grid-column: 1;
-  grid-row: 1;
 }
 .nutrition .nutrition-day-meals {
   background: transparent;
@@ -105,9 +103,10 @@
 .nutrition-dialog::backdrop {
   background: rgb(3 9 13 / .8);
 }
-@media (max-width: 760px) {
-  .nutrition-day { grid-template-columns: minmax(0, 1fr); }
-  .nutrition-day-summary, .nutrition-day-meals { grid-column: auto; grid-row: auto; }
+@media (min-width: 900px) {
+  .nutrition-day-summary {grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap:32px}
+  .nutrition-day-summary > header, .nutrition-day-summary > .completion {grid-column:1/-1}
+  .nutrition-day-summary > .balance {align-self:center}
 }
 
 .nutrition details.nutrition-profile > summary {

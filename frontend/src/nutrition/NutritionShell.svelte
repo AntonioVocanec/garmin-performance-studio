@@ -497,7 +497,7 @@
 
 </script>
 
-<div class="nutrition" aria-busy={loading||busy}>
+<div class="nutrition" class:daily-layout={isDailyView} aria-busy={loading||busy}>
  {#if active && navigationGroup.secondary.length}
  <nav class="nutrition-subnav" aria-label={'Odjeljci · '+navigationGroup.label}>
    {#each navigationLinks as link (link.id)}
