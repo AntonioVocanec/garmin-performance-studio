@@ -59,6 +59,7 @@ class Profile(Input):
     protein: Positive | None = None
     carbs: Positive | None = None
     fat: Positive | None = None
+    fiber: Positive | None = None
     restrictions: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=30)
     allergens: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=30)
     excludedFoods: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=30)

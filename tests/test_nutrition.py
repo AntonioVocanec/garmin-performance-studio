@@ -662,12 +662,16 @@ class NutritionTests(unittest.TestCase):
         with self.connection() as db:self.assertIsNone(self.service.diary(db,date(2026,11,14))['nutrients']['kcal'])
 
     def test_profile_effective_dates_and_conflicts(self):
-        body=Profile(effectiveDate='2026-11-14',calories='2200',carbs='200').model_dump()
+        body=Profile(effectiveDate='2026-11-14',calories='2200',carbs='200',fiber='25.5').model_dump()
         self.service.save_profile(body)
         with self.assertRaises(DomainError):self.service.save_profile(body)
         with self.connection() as db:
             self.assertEqual(self.service.diary(db,date(2026,11,13))['targets'],{})
             self.assertEqual(self.service.diary(db,date(2026,11,14))['targets']['calories'],'2200')
+        self.service.save_profile({**body,'effectiveDate':date(2026,11,15),'expectedVersion':1,'fiber':None})
+        with self.connection() as db:
+            self.assertEqual(self.service.diary(db,date(2026,11,14))['targets']['fiber'],'25.5')
+            self.assertIsNone(self.service.diary(db,date(2026,11,15))['targets']['fiber'])
 
     def test_cook_reversal_after_reversed_consumption(self):
         self.receipt('stock','100','2026-12-01')

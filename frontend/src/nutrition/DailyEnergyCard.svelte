@@ -11,6 +11,7 @@
   const progress = $derived(target !== null && intake !== null ? Math.min(100, intake / target * 100) : 0);
   const garmin = $derived(energy?.date === diary.date && energy.status !== 'unavailable' ? energy : null);
   const macros = $derived(comparisonNutrients(diary));
+  const useReportedCarbs = $derived(macros.carbs == null && diary.nutrients.carbs != null);
   const labels = [['protein','Proteini'],['carbs','Ugljikohidrati'],['fat','Masti'],['fiber','Vlakna']] as const;
 </script>
 
@@ -37,19 +38,16 @@
     <h4>Makronutrijenti</h4>
     <div class="macros">
       {#each labels as [key,label]}
-        {@const value = macros[key]}
+        {@const reported = key === 'carbs' && useReportedCarbs}
+        {@const value = reported ? diary.nutrients.carbs : macros[key]}
         {@const goal = Number(diary.targets[key])}
         <div class={'macro '+key}>
           <span>{label}</span>
           {#if goal > 0 && value != null}
-            <progress aria-label={label} value={Math.min(Number(value),goal)} max={goal}></progress>
+            <progress aria-label={reported ? 'Ugljikohidrati prema zapisima · okvirni napredak' : label} value={Math.min(Number(value),goal)} max={goal}></progress>
           {/if}
-          {#if key === 'carbs' && value == null && diary.nutrients.carbs != null}
-            <strong>{fmt(diary.nutrients.carbs)} g iz zapisa</strong>
-            {#if goal > 0}<small>Cilj {fmt(goal)} g · usporedba nedostupna</small>{/if}
-          {:else}
-            <strong>{key === 'carbs' && value != null && diary.carbComparison === 'estimated' ? '≈ ' : ''}{fmt(value)}{goal > 0 ? ' / '+fmt(goal) : ''} g</strong>
-          {/if}
+          <strong>{key === 'carbs' && !reported && value != null && diary.carbComparison === 'estimated' ? '≈ ' : ''}{fmt(value)}{goal > 0 ? ' / '+fmt(goal) : ''} g</strong>
+          {#if reported}<small>{goal > 0 ? 'Okvirno · prema zapisima' : 'Prema zapisima'}</small>{/if}
         </div>
       {/each}
     </div>
@@ -58,7 +56,7 @@
       <p>Preostale kalorije razlika su između cilja i unosa iz dnevnika. Aktivne kalorije prikazane su zasebno.</p>
       {#if garmin?.provisional || garmin?.status==='partial'}<p>Garminov podatak obuhvaća dosad sinkroniziranu aktivnost.</p>{/if}
       {#if diary.entries.length}
-        <p>{carbExplanation(diary.carbComparison)}</p>
+        <p>{useReportedCarbs ? 'Zbroj ugljikohidrata dolazi iz evidentiranih obroka. Zapisi mogu različito računati vlakna, pa je usporedba s ciljem okvirna.' : carbExplanation(diary.carbComparison)}</p>
         <p>UH {fmt(diary.nutrients.carbs)} g prema izvornim zapisima. Energija prema izvornoj deklaraciji.</p>
       {/if}
     </details>

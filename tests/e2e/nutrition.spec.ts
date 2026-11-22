@@ -92,11 +92,12 @@ test('nutrition distinguishes reported carbs from comparable EU targets and unkn
  const unknown=await call('/foods',{name:'Synthetic unknown '+crypto.randomUUID(),source:'Synthetic',nutrients:{carbs:5}});
  await call('/diary/entries',{date,meal:'lunch',kind:'food',sourceId:unknown.id,quantity:100});
  await page.getByRole('button',{name:'Osvježi prehranu'}).click();
- await expect(carbs.getByText('75 g iz zapisa')).toBeVisible();
- await expect(carbs).toContainText('Cilj 200 g · usporedba nedostupna');
- await expect(carbs.getByRole('progressbar')).toHaveCount(0);
+ await expect(carbs.getByText('75 / 200 g')).toBeVisible();
+ await expect(carbs).toContainText('Okvirno · prema zapisima');
+ await expect(carbs.getByRole('progressbar')).toHaveAttribute('value','75');
+ await expect(carbs.getByRole('progressbar')).toHaveAttribute('max','200');
  await expect(page.getByRole('region',{name:'Ručak',exact:true})).toContainText('75 g UH iz zapisa');
- await expect(macros).toContainText('definicija ili podaci nisu potvrđeni');
+ await expect(macros).toContainText('usporedba s ciljem okvirna');
 });
 
 test('nutrition preserves Garmin navigation and completes local inventory cooking diary flow on mobile',async({page,request})=>{
@@ -146,8 +147,17 @@ test('nutrition profile starts configurable and shopping receipt is idempotent i
  await page.getByRole('textbox',{name:'Energija · kcal',exact:true}).fill('2300');
  await page.getByRole('textbox',{name:'Proteini · g',exact:true}).fill('110');
  await page.getByRole('textbox',{name:'Ugljikohidrati · g',exact:true}).fill('250');
+ const fiberGoal=page.getByRole('textbox',{name:'Vlakna · g dnevno'});
+ await fiberGoal.fill('25,5');
  await page.getByRole('button',{name:'Spremi profil',exact:true}).click();
  await expect(page.locator('.nutrition')).toContainText('Cilj 2.300 kcal');
+ const fiberCard=page.locator('.nutrition-day-summary .macro.fiber');
+ await expect(fiberCard).toContainText('/ 25,5 g');
+ await page.locator('.nutrition-profile summary').click();
+ await expect(fiberGoal).toHaveValue('25.5');
+ await fiberGoal.fill('');
+ await page.getByRole('button',{name:'Spremi profil',exact:true}).click();
+ await expect(fiberCard).not.toContainText('/');
  const call=async(path:string,body:unknown,key=crypto.randomUUID())=>{const r=await request.post('/api/nutrition'+path,{data:body,headers:{'Idempotency-Key':key}});expect(r.ok(),await r.text()).toBeTruthy();return (await r.json()).data};
  const food=await call('/foods',{name:'Synthetic shopping '+crypto.randomUUID(),source:'Synthetic label',nutrients:{kcal:'100'}});
  const recipe=await call('/recipes',{name:'Synthetic planned '+crypto.randomUUID(),portions:'1',minutes:5,ingredients:[{foodId:food.id,quantity:'100'}],steps:['Prepare.']});

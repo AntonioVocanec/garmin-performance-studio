@@ -40,7 +40,7 @@ class NutritionService:
                 raise DomainError('Profil je u međuvremenu izmijenjen.')
             version = profile['version'] + 1
             db.execute('INSERT INTO nutrition_profiles VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET data_json=excluded.data_json,version=excluded.version', (dumps(data), version))
-            db.execute('INSERT INTO nutrition_target_periods VALUES (?,?) ON CONFLICT(effective_date) DO UPDATE SET data_json=excluded.data_json', (str(data['effectiveDate']), dumps({k: data.get(k) for k in ('calories', 'protein', 'carbs', 'fat')})))
+            db.execute('INSERT INTO nutrition_target_periods VALUES (?,?) ON CONFLICT(effective_date) DO UPDATE SET data_json=excluded.data_json', (str(data['effectiveDate']), dumps({k: data.get(k) for k in ('calories', 'protein', 'carbs', 'fat', 'fiber')})))
             return {**data, 'version': version}
 
     def food(self, db, food_id):
