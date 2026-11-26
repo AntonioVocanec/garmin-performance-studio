@@ -122,7 +122,13 @@ def create_router(core):
     def batches():return read(service.batches)
 
     @router.get('/prep/portions', response_model=Response)
-    def portions():return read(lambda db:[l for l in service.inventory(db) if l['batch_id']])
+    def portions(asOf:date|None=None):
+        def work(db):
+            lots = [lot for lot in service.inventory(db, asOf) if lot['batch_id']]
+            if asOf is None:
+                return lots
+            return [{**lot, 'quantity':lot['availableQuantity']} for lot in lots if Decimal(lot['availableQuantity'])>0]
+        return read(work)
 
     @router.get('/prep/schedule', response_model=Response)
     def prep_schedule():return read(lambda db:rows(db,'SELECT s.*,r.name FROM nutrition_prep_schedule s JOIN nutrition_recipe_versions v ON v.id=s.recipe_version_id JOIN nutrition_recipes r ON r.id=v.recipe_id WHERE s.status=? ORDER BY planned_date LIMIT 100',('planned',)))
@@ -161,7 +167,8 @@ def create_router(core):
     def reverse(operation_id:str,idempotency_key:Key):return run(lambda:service.reverse(idempotency_key,operation_id))
 
     @router.get('/plan', response_model=Response)
-    def plan(week:date):return read(lambda db:service.plan(db,week,week+timedelta(days=6)))
+    def plan(week:date, days:Annotated[int,Query(ge=1,le=7)]=7):
+        return read(lambda db:service.plan(db,week,week+timedelta(days=days-1)))
 
     @router.get('/plan/summary', response_model=Response)
     def plan_summary(week:date):return read(lambda db:service.plan_summary(db,week,week+timedelta(days=6)))
@@ -173,11 +180,8 @@ def create_router(core):
     def update_plan(plan_id:str,body:m.Plan):return run(lambda:service.save_plan(body.model_dump(),plan_id))
 
     @router.delete('/plan/entries/{plan_id}', response_model=Response)
-    def delete_plan(plan_id:str):
-        def work(db):
-            db.execute('DELETE FROM nutrition_meal_plan_entries WHERE id=?',(plan_id,))
-            return {'id':plan_id}
-        return read(work)
+    def delete_plan(plan_id:str, expectedVersion:Annotated[int,Query(ge=1)]):
+        return run(lambda:service.delete_plan(plan_id, expectedVersion))
 
     def shopping_token(body, items):
         return digest({'start': body.start, 'end': body.end,

@@ -156,8 +156,13 @@ class NutritionService:
                 if not data.get('location'):
                     raise DomainError('Odaberi lokaciju.',422)
                 new_id = uid()
-                db.execute('INSERT INTO nutrition_inventory_lots (id,food_id,batch_id,quantity,initial_quantity,unit,location,expires_on,received_at,cost) VALUES (?,?,?,?,?,?,?,?,?,?)', (new_id,lot['food_id'],lot['batch_id'],0,quantity,lot['unit'],data['location'],lot['expires_on'],now(),None))
-                db.execute('UPDATE nutrition_inventory_lots SET available_on=? WHERE id=?', (str(self.today()), new_id))
+                day = str(self.today())
+                undated = db.execute('SELECT 1 FROM nutrition_inventory_transactions WHERE lot_id=? AND event_date IS NULL LIMIT 1', (lot['id'],)).fetchone()
+                available_on = max(day, lot['available_on']) if lot['available_on'] and not undated else None
+                cost = (fixed(decimal(lot['cost'], 10000) * quantity / lot['initial_quantity'], 10000)
+                        if lot['cost'] is not None and lot['initial_quantity'] else None)
+                db.execute('INSERT INTO nutrition_inventory_lots (id,food_id,batch_id,quantity,initial_quantity,unit,location,expires_on,received_at,cost,available_on) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                           (new_id,lot['food_id'],lot['batch_id'],0,quantity,lot['unit'],data['location'],lot['expires_on'],now(),cost,available_on))
                 self.change(db,op,lot['id'],-quantity,'transfer')
                 self.change(db,op,new_id,quantity,'transfer')
             elif kind == 'adjustment':
@@ -401,8 +406,13 @@ class NutritionService:
         return self.repo.operation('reverse',key,{'id':operation_id},action)
 
     def plan(self,db,start,end):
-        entries=rows(db,'SELECT * FROM nutrition_meal_plan_entries WHERE entry_date BETWEEN ? AND ? ORDER BY entry_date,meal',(str(start),str(end)))
+        entries = rows(db, '''
+            SELECT p.*, EXISTS(SELECT 1 FROM nutrition_shopping_sources s WHERE s.plan_id=p.id) AS linkedToShopping
+            FROM nutrition_meal_plan_entries p
+            WHERE entry_date BETWEEN ? AND ? ORDER BY entry_date,meal
+        ''', (str(start), str(end)))
         for e in entries:
+            e['linkedToShopping']=bool(e['linkedToShopping'])
             recipe=self.recipe(db,version_id=e['recipe_version_id'])
             e['portions']=text(decimal(e['portions']));e['name']=recipe['name'];e['nutrients']=scaled(recipe['perPortion'],Decimal(e['portions']));e['estimatedCost']=text(Decimal(recipe['costPerPortion'])*Decimal(e['portions'])) if recipe['costPerPortion'] is not None else None
             e['comparableNutrients'] = scaled(recipe['perPortionComparable'], Decimal(e['portions']))
@@ -415,6 +425,17 @@ class NutritionService:
                 'comparableNutrients':total([e['comparableNutrients'] for e in entries]),
                 'carbComparison':combined_status(e['carbComparison'] for e in entries),
                 'days':[{'date':str(start+timedelta(days=i)),'nutrients':total([e['nutrients'] for e in entries if e['entry_date']==str(start+timedelta(days=i))])} for i in range((end-start).days+1)]}
+
+    def delete_plan(self, plan_id, expected_version):
+        with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            version = db.execute('SELECT version FROM nutrition_meal_plan_entries WHERE id=?', (plan_id,)).fetchone()
+            if not version or version[0] != expected_version:
+                raise DomainError('Plan je promijenjen ili uklonjen. Osvježi planer.')
+            if db.execute('SELECT 1 FROM nutrition_shopping_sources WHERE plan_id=? LIMIT 1', (plan_id,)).fetchone():
+                raise DomainError('Plan je povezan s kupovinom. Za otkazivanje odaberi status Preskočeno.')
+            db.execute('DELETE FROM nutrition_meal_plan_entries WHERE id=?', (plan_id,))
+            return {'id':plan_id}
 
     def save_plan(self,data,plan_id=None):
         with self.connection() as db:

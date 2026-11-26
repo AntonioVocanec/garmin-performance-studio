@@ -16,6 +16,7 @@
  let editorOpen=$state(false),editorVersion=$state(0);
  let receiptDialog:HTMLDialogElement;
  let receiptSearch=$state<HTMLInputElement>(),receiptAmount=$state<HTMLInputElement>();
+ let savingRecipe=$state(false);
  let savingReceiptFood=$state(false);
  let receiptQuery=$state(''),receiptError=$state(''),receiptAddingFood=$state(false);
  let receiptFood=$state(''),receiptQuantity=$state(''),receiptLocation=$state('pantry'),receiptExpiry=$state(''),receiptCost=$state(''),receiptDate=$state('');
@@ -47,6 +48,9 @@
  let profileDetails=$state<HTMLDetailsElement>();
  let logError=$state('');
  let logSourceError=$state('');
+ let dailyPlans=$state<PlanEntry[]>([]),mealPortions=$state<Lot[]>([]);
+ let mealSourcesLoading=$state(false), profileReady=$state(false);
+ let mealSourceRequest=0;
  let logSourceField=$state<HTMLSelectElement>();
  const isDailyView=$derived(view==='overview');
  const planStatusLabels:Record<string,string>={planned:'Planirano',prepared:'Pripremljeno u planu',
@@ -56,9 +60,9 @@
  const dayMeals=$derived(Object.entries(mealLabels).map(([key,label])=>({
    label,key,
    entries:diary?.entries.filter(entry=>entry.meal===key)??[],
-   planned:overview?.meals.filter(meal=>meal.meal===key)??[],
+   planned:dailyPlans.filter(meal=>meal.entry_date===date&&meal.meal===key),
  })));
- const selectedPortion=$derived(logKind==='portion'?overview?.portions.find(l=>l.id===logSource):undefined);
+ const selectedPortion=$derived(logKind==='portion'?mealPortions.find(l=>l.id===logSource):undefined);
  const portionQuantity=$derived(Number(logQuantity.replace(',','.')));
  const nutritionSection=$derived('nutrition-'+view);
  const navigationGroup=$derived(nutritionGroupFor(nutritionSection));
@@ -105,7 +109,7 @@
    ? foods.map(f=>({id:f.id,name:f.name,unit:f.unit}))
    : logKind==='recipe'
      ? recipeChoices(logRecipeVersion).map(r=>({...r,unit:'porcija'}))
-     : (overview?.portions??[]).map(l=>({id:l.id,name:`${l.name} · ${l.quantity} porcija`,unit:'porcija'})));
+     : mealPortions.map(l=>({id:l.id,name:`${l.name} · ${l.quantity} porcija`,unit:'porcija'})));
  const prepChoices=$derived(recipeChoices(prepRecipeVersion?{id:prepRecipeVersion.versionId,name:prepRecipeVersion.name}:null));
  const selectedPrepRecipe=$derived(recipes.find(r=>r.versionId===prepRecipe)??prepRecipeVersion);
  const preparedLots=$derived(inventoryLots.filter(l=>l.batch_id));
@@ -119,6 +123,30 @@
  );
  const allDays=$derived(date?Array.from({length:7},(_,i)=>shift(weekStart(date),i)):[]);
  async function load(){if(!active||!date)return;const requestedDate=date,overviewDate=view==='inventory'?receiptToday():date,revision=contextRevision;controller?.abort();controller=new AbortController();const signal=controller.signal;loading=true;error='';
+ if(isDailyView){
+   const current=()=>active&&!signal.aborted&&revision===contextRevision&&date===requestedDate;
+   const report=(section:string,e:unknown)=>{
+     if(current())error=[error,section+' · '+(e instanceof Error?e.message:String(e))].filter(Boolean).join(' ');
+   };
+   profileReady=false;
+   dailyPlans=[];
+   await Promise.all([
+     api<Diary>(`/diary?date=${requestedDate}`,'GET',undefined,signal).then(async value=>{
+       if(!current())return;
+       if(value.date!==requestedDate)throw new Error('Datum primljenog dnevnika ne odgovara odabranom danu.');
+       const reveal=!diary&&location.hash==='#nutrition-diary';
+       diary=value;
+       if(reveal){await tick();if(current())window.dispatchEvent(new Event('dashboard:content-updated'))}
+     }).catch(e=>{if(current())diary=null;report('Dnevnik',e)}).finally(()=>{if(current())loading=false}),
+     api<Profile>('/profile','GET',undefined,signal).then(value=>{
+       if(current()){profile=value;profileReady=true}
+     }).catch(e=>report('Profil prehrane',e)),
+     api<PlanEntry[]>(`/plan?week=${requestedDate}&days=1`,'GET',undefined,signal).then(value=>{
+       if(current())dailyPlans=value;
+     }).catch(e=>report('Planirani obroci',e)),
+   ]);
+   return;
+ }
  try{const [f,r,l,p,d,o,pl,sl,h,ds,sch,ps]=await Promise.all([api<Food[]>('/foods','GET',undefined,signal),api<Recipe[]>('/recipes','GET',undefined,signal),api<Lot[]>('/inventory','GET',undefined,signal),api<Profile>('/profile','GET',undefined,signal),api<Diary>(`/diary?date=${date}`,'GET',undefined,signal),api<Overview>(`/dashboard?date=${overviewDate}`,'GET',undefined,signal),api<PlanEntry[]>(`/plan?week=${weekStart(date)}`,'GET',undefined,signal),api<Shopping[]>('/shopping/lists','GET',undefined,signal),api<typeof history>('/inventory/history','GET',undefined,signal),api<Diary[]>(`/analytics?start=${shift(date,-6)}&end=${date}`,'GET',undefined,signal),api<typeof schedule>('/prep/schedule','GET',undefined,signal),api<NonNullable<typeof planSummary>>(`/plan/summary?week=${weekStart(date)}`,'GET',undefined,signal)]);if(signal.aborted||date!==requestedDate||revision!==contextRevision||!active)return;
  if(d.date!==requestedDate){diary=null;throw new Error('Datum primljenog dnevnika ne odgovara odabranom danu. Osvježi prehranu.')}
  const revealDiary=!diary&&location.hash==='#nutrition-diary';
@@ -160,7 +188,7 @@
  async function action<T>(
   work:()=>Promise<T>,
   success='Promjena je spremljena.',
-  options:{apply?:(result:T)=>void;isCurrent?:()=>boolean;onError?:(error:unknown)=>void;showError?:boolean}={},
+  options:{apply?:(result:T)=>void;isCurrent?:()=>boolean;onError?:(error:unknown)=>void;showError?:boolean;reloadAfterSuccess?:boolean}={},
  ){
   if(busy)return;
   const revision=contextRevision;
@@ -170,7 +198,8 @@
    const result=await work();
    if(!isCurrent())return;
    options.apply?.(result);
-   message=success;await load();
+   message=success;
+   if(options.reloadAfterSuccess!==false)await load();
   }catch(e){
    if(isCurrent()){
     options.onError?.(e);
@@ -194,6 +223,7 @@
    const revision=shoppingRevision;
    await action(()=>api<{items:unknown;token:string}>('/shopping/preview?includeToken=true','POST',range),
      'Pregled manjka je spreman.',{
+       reloadAfterSuccess:false,
        isCurrent:()=>revision===shoppingRevision,
        apply:result=>{
          const items=validateShoppingPreview(result?.items);
@@ -293,6 +323,29 @@
    });
    if(saved)receiptDialog.close();
  }
+ async function loadMealSource(){
+   const request=++mealSourceRequest,kind=logKind,revision=contextRevision,day=date;
+   const current=()=>request===mealSourceRequest&&revision===contextRevision&&active&&isDailyView&&day===date;
+   mealSourcesLoading=true;
+   logError='';
+   try{
+     if(kind==='food'){
+       const result=await api<Food[]>('/foods');
+       if(current())foods=result;
+     }else if(kind==='recipe'){
+       const result=await api<Recipe[]>('/recipes');
+       if(current())recipes=result;
+     }else{
+       const result=await api<Lot[]>(`/prep/portions?asOf=${day}`);
+       if(current())mealPortions=result;
+     }
+   }catch(e){
+     if(current()){
+       if(kind==='food')foods=[];else if(kind==='recipe')recipes=[];else mealPortions=[];
+       logError=e instanceof Error?e.message:String(e);
+     }
+   }finally{if(current())mealSourcesLoading=false}
+ }
  async function openMeal({
    source,meal='lunch',trigger=mealTrigger,
  }: {source?:{portionId:string}|PlanEntry;meal?:string;trigger?:HTMLButtonElement}={}){
@@ -313,6 +366,7 @@
      mealReturnFocus=trigger;
      if (!source) trigger?.focus({preventScroll:true});
      mealDialog.showModal();
+     void loadMealSource();
    }
  }
  function openLinkedMeal(source:{portionId:string}|PlanEntry){
@@ -333,6 +387,7 @@
  async function log(e:SubmitEvent){
    e.preventDefault();
    const form=e.currentTarget as HTMLFormElement;
+   if(mealSourcesLoading)return;
    logError='';
    if (!logSourceField?.value) {
      logSourceError=logKind==='portion'?'Odaberi gotovu porciju.':logKind==='recipe'?'Odaberi recept.':'Odaberi namirnicu.';
@@ -360,6 +415,7 @@
   prepPreview=null;preparedDate='';
   await action(()=>api<CookingPreview>('/prep/preview','POST',body),
    'Provjeri sastojke, količine i rok prije potvrde kuhanja.',{
+    reloadAfterSuccess:false,
     isCurrent:()=>fingerprint===JSON.stringify(prepBody),
     apply:result=>{prepPreview={...result,fingerprint}},
    });
@@ -387,6 +443,7 @@
   delete scale[recipe.id];
   await action(()=>api<(typeof scale)[string]>(`/recipes/${recipe.id}/scale-preview`,'POST',body),
    'Skaliranje je pregled, original je sačuvan.',{
+    reloadAfterSuccess:false,
     isCurrent:()=>form.isConnected&&JSON.stringify(scaleBody(form))===fingerprint&&recipes.find(r=>r.id===recipe.id)?.versionId===versionId,
     apply:result=>{scale[recipe.id]=result},
    });
@@ -520,7 +577,7 @@
      <button class="btn nutrition-primary" onclick={openReceipt} disabled={loading||busy}>Zaprimi namirnicu</button>
    {/if}
    <button class="btn" onclick={refresh} disabled={loading}>Osvježi prehranu</button>
-   {#if active}<NutritionProfile {profile} {date} onchange={load} bind:details={profileDetails}/>{/if}
+   {#if active}<NutritionProfile ready={!isDailyView||profileReady} {profile} {date} onchange={load} bind:details={profileDetails}/>{/if}
  </div>
  {#if error}<div class="nutrition-notice error" role="alert">{error}</div>{/if}
  {#if message}<div class="nutrition-notice" role="status">{message}</div>{/if}
@@ -528,7 +585,7 @@
  {#if active}
  {#if isDailyView && diary}
  <div class="nutrition-day">
-   <DailyEnergyCard {diary} {energy} busy={busy||loading}
+   <DailyEnergyCard {diary} {energy} settingsReady={profileReady} busy={busy||loading}
      onsettings={()=>{if(profileDetails){profileDetails.open=true;profileDetails.querySelector('summary')?.focus()}}}
      oncomplete={()=>action(()=>api(`/diary/days/${date}`,'PUT',{complete:!diary!.complete}))}/>
    <article class="panel nutrition-day-meals" id="nutrition-diary">
@@ -581,8 +638,14 @@
  <article class="panel"><h3>Promjene zaliha</h3>{#each history as h}<div class="nutrition-row"><span>{h.created_at} · {h.reason} · {fmt(h.delta/1000)}</span><button class="btn" disabled={busy||Boolean(h.reversed_by)} onclick={()=>action(()=>api(`/operations/${h.operation_id}/reverse`,'POST'))}>Poništi operaciju</button></div>{:else}<p class="quiet">Nema zaprimanja ni promjena zaliha.</p>{/each}</article>
  {:else if view==='recipes'}
  <div class="nutrition-fields"><label>Pretraži recepte<input type="search" bind:value={search}/></label><label>Prehrambena oznaka<input bind:value={recipeFilter} placeholder="Prazno za sve"/></label></div>
- <details class="panel nutrition-details" open={Boolean(recipeEdit)}><summary>{recipeEdit?'Uredi recept':'Novi recept'}</summary><CatalogEditor mode="recipe" {foods} recipe={recipeEdit} onchange={async()=>{recipeEdit=null;await load()}}/>{#if recipeEdit}<button class="btn" onclick={()=>recipeEdit=null}>Završi uređivanje</button>{/if}</details>
- <div class="nutrition-grid">{#each shownRecipes as r}<article class="panel"><h3>{r.name}</h3><p>{r.portions} porcija · {r.minutes} min · {r.method}</p><p>{fmt(r.perPortion.kcal,0)} kcal · {fmt(r.perPortion.protein)} g proteina / porcija · {fmt(r.costPerPortion,2)} EUR</p><p class="quiet">{r.nutritionComplete?'Nutritivni podaci dostupni':'Nutritivni podaci nepotpuni'} · cijena prema zabilježenim nabavama</p><details><summary>Sastojci, izvori cijena i priprema</summary>{#each r.priceSources??[] as source}<p class="quiet">Nabavna cijena: {source.name} · {source.date}</p>{/each}{#each r.ingredients as i}<p>{sourceName(i.foodId)} · {i.quantity} {foods.find(f=>f.id===i.foodId)?.unit}</p>{/each}<ol>{#each r.steps as s}<li>{s}</li>{/each}</ol></details><div class="nutrition-actions"><button class="btn" onclick={()=>recipeEdit=r}>Uredi</button><button class="btn" disabled={busy} onclick={()=>action(()=>api(`/recipes/${r.id}/duplicate`,'POST'))}>Dupliciraj</button><a class="btn nutrition-link" href="#nutrition-prep" onclick={()=>setPrepRecipe(r)}>Pripremi</a><a class="btn nutrition-link" href="#nutrition-planner" onclick={()=>openPlanForm(undefined,false,r)}>Planiraj</a></div>
+ <details class="panel nutrition-details" open={Boolean(recipeEdit)}>
+   <summary>{recipeEdit?'Uredi recept':'Novi recept'}</summary>
+   {#key recipeEdit?.id}
+     <CatalogEditor mode="recipe" bind:saving={savingRecipe} {foods} recipe={recipeEdit} onchange={async()=>{recipeEdit=null;await load()}}/>
+   {/key}
+   {#if recipeEdit}<button class="btn" disabled={savingRecipe} onclick={()=>recipeEdit=null}>Završi uređivanje</button>{/if}
+ </details>
+ <div class="nutrition-grid">{#each shownRecipes as r}<article class="panel"><h3>{r.name}</h3><p>{r.portions} porcija · {r.minutes} min · {r.method}</p><p>{fmt(r.perPortion.kcal,0)} kcal · {fmt(r.perPortion.protein)} g proteina / porcija · {fmt(r.costPerPortion,2)} EUR</p><p class="quiet">{r.nutritionComplete?'Nutritivni podaci dostupni':'Nutritivni podaci nepotpuni'} · cijena prema zabilježenim nabavama</p><details><summary>Sastojci, izvori cijena i priprema</summary>{#each r.priceSources??[] as source}<p class="quiet">Nabavna cijena: {source.name} · {source.date}</p>{/each}{#each r.ingredients as i}<p>{sourceName(i.foodId)} · {i.quantity} {foods.find(f=>f.id===i.foodId)?.unit}</p>{/each}<ol>{#each r.steps as s}<li>{s}</li>{/each}</ol></details><div class="nutrition-actions"><button class="btn" disabled={savingRecipe} onclick={()=>recipeEdit=r}>Uredi</button><button class="btn" disabled={busy} onclick={()=>action(()=>api(`/recipes/${r.id}/duplicate`,'POST'))}>Dupliciraj</button><a class="btn nutrition-link" href="#nutrition-prep" onclick={()=>setPrepRecipe(r)}>Pripremi</a><a class="btn nutrition-link" href="#nutrition-planner" onclick={()=>openPlanForm(undefined,false,r)}>Planiraj</a></div>
  <form class="nutrition-form" onsubmit={(e)=>previewScale(e,r)} oninput={()=>delete scale[r.id]} onchange={()=>delete scale[r.id]}><label>Željene porcije<input name="portions" inputmode="decimal" value={r.portions}/></label><label class="nutrition-check"><input type="checkbox" name="byInventory"/>Najveći broj porcija prema zalihama</label><button class="btn" disabled={busy}>Pregled skaliranja</button></form>{#if scale[r.id]}<p>{scale[r.id].portions} porcija · faktor {scale[r.id].factor} · {scale[r.id].feasible?'izvedivo':'nedostaju sastojci'}</p>{#each scale[r.id].missing as m}<p>{m.name}: nedostaje {m.quantity}</p>{/each}{/if}</article>{:else}<article class="panel">Nema recepata za ovaj filtar.</article>{/each}</div>
  {:else if view==='prep'}
  <article class="panel">
@@ -755,7 +818,11 @@
              {/if}
              <button class="btn" disabled={busy} onclick={()=>openPlanForm(entry)}>Uredi / premjesti</button>
              <button class="btn" disabled={busy} onclick={()=>openPlanForm(entry,true)}>Kopiraj na sljedeći dan</button>
-             <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/plan/entries/${entry.id}`,'DELETE'))}>Ukloni plan</button>
+             {#if entry.linkedToShopping}
+               <span class="quiet">Plan je povezan s kupovinom. Za otkazivanje odaberi status Preskočeno.</span>
+             {:else}
+               <button class="btn" disabled={busy} onclick={()=>action(()=>api(`/plan/entries/${entry.id}?expectedVersion=${entry.version}`,'DELETE'))}>Ukloni plan</button>
+             {/if}
            </div>
          </div>
        {:else}
@@ -847,7 +914,7 @@
    <form class="nutrition-form" novalidate onsubmit={log}>
    <div class="nutrition-fields">
      <label>Vrsta
-       <select bind:value={logKind} onchange={()=>{logSource='';logRecipeVersion=null;logConsume=false;logSourceError=''}}>
+       <select bind:value={logKind} onchange={()=>{logSource='';logRecipeVersion=null;logConsume=false;logSourceError='';void loadMealSource()}}>
          <option value="food">Namirnica</option>
          <option value="recipe">Recept · samo evidencija</option>
          <option value="portion">Gotova porcija · potrošnja</option>
@@ -855,7 +922,7 @@
      </label>
      <div>
        <label>Odaberi
-         <select required bind:this={logSourceField} bind:value={logSource}
+         <select required disabled={mealSourcesLoading} bind:this={logSourceField} bind:value={logSource}
            aria-invalid={logSourceError?'true':undefined}
            aria-describedby={logSourceError?'meal-source-error':undefined}
            onchange={()=>{logSourceError=''}}>
@@ -882,7 +949,7 @@
  {/if}
  {#if logError}<p class="error" role="alert">{logError}</p>{/if}
  <div class="nutrition-actions">
-   <button class="btn nutrition-primary" disabled={busy}>Potvrdi unos</button>
+   <button class="btn nutrition-primary" disabled={busy||mealSourcesLoading}>Potvrdi unos</button>
    <button class="btn" type="button" disabled={busy} onclick={()=>mealDialog.close()}>Odustani</button>
  </div></form>
  </dialog>

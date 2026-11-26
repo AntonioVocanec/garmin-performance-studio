@@ -209,10 +209,9 @@ for (const width of [320,390,836,1440]) {
       entries:names.map((name,i)=>({id:'test'+i,operation_id:'op'+i,meal:'lunch',name,quantity:'100',unit:'g',
         nutrients:{sourceKind:i?'recipe':'food',kcal:'92',protein:'2',fat:'0',fiber:i?null:'3',carbs:'10',comparableNutrients:{carbs:'7'}}}))
     }}}));
-    await page.route('**/api/nutrition/dashboard?**',route=>route.fulfill({json:{ok:true,data:{
-      diary:{date:new URL(route.request().url()).searchParams.get('date')},portions:[],alerts:[],lowStock:[],
-      meals:[{id:'p1',name:'Salata od povrća',status:'planned',portions:1,meal:'lunch',nutrients:{kcal:'300'}}]
-    }}}));
+    await page.route('**/api/nutrition/plan?**', route=>route.fulfill({json:{ok:true,data:[
+      {id:'p1',entry_date:new URL(route.request().url()).searchParams.get('week'),name:'Salata od povrća',status:'planned',portions:1,meal:'lunch',nutrients:{kcal:'300'}}
+    ]}}));
     await page.goto('/#nutrition-overview');
     const card=page.getByRole('region',{name:'Ručak',exact:true});
     await expect(card.getByText('184 kcal',{exact:true})).toBeVisible();
@@ -552,4 +551,17 @@ test('adding from Međuobrok stores a snack and updates only its diary section',
   const response=await request.get('/api/nutrition/diary?date='+date);
   const entries=(await response.json()).data.entries;
   expect(entries.filter((entry:{name:string})=>entry.name===food.name)).toEqual([expect.objectContaining({meal:'snack'})]);
+});
+
+test('Moj dan opens independently of inventory history and shopping', async ({page})=>{
+  await mockDashboardApi(page);
+  const unrelated:string[]=[];
+  await page.route(/\/api\/nutrition\/(inventory|shopping|prep\/schedule|foods|recipes)(?:[/?]|$)/, route=>{
+    unrelated.push(route.request().url());
+    return route.fulfill({status:503,body:'Nedostupno'});
+  });
+  await page.goto('/#nutrition-overview');
+  await expect(page.locator('#nutrition-diary')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Evidentiraj obrok'})).toBeEnabled();
+  expect(unrelated).toEqual([]);
 });

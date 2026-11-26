@@ -20,7 +20,7 @@ export interface Lot {availableQuantity?:string;expiredQuantity?:string;received
 export interface Entry {id:string;name:string;quantity:string;unit:string;meal:string;nutrients:Nutrients & NutritionComparison & {sourceKind?:string};operation_id:string}
 export interface Diary extends NutritionComparison {date:string;entries:Entry[];nutrients:Nutrients;complete:boolean;targets:Record<string,string|null>}
 export interface Profile {version:number;calories?:string|null;protein?:string|null;carbs?:string|null;fat?:string|null;fiber?:string|null;restrictions?:string[];allergens?:string[];excludedFoods?:string[];methods?:string[];preferFrozen?:boolean;mealsPerDay?:number|null;prepDays?:number|null;prepPortions?:number|null;sportsRules?:{trainingLabel:string;durationMinutes:number;extraCalories:string;extraCarbs:string}[];aiDailyRequests?:number;aiDailyTokens?:number}
-export interface PlanEntry {id:string;entry_date:string;meal:string;name:string;recipe_version_id:string;portions:string;status:string;version:number;nutrients:Nutrients}
+export interface PlanEntry {linkedToShopping?:boolean;id:string;entry_date:string;meal:string;name:string;recipe_version_id:string;portions:string;status:string;version:number;nutrients:Nutrients}
 export interface ShoppingItem {id:string;food_id:string;name:string;unit:string;quantity:string;required:string;packageSize:string|null;checked:boolean;received:boolean;version:number}
 export interface Shopping {id:string;name:string;items:ShoppingItem[]}
 export interface ShoppingPreviewItem {name:string;quantity:string|number;unit:string;cost:string|null;priceDate:string|null}
@@ -48,7 +48,12 @@ export async function nutritionApi<T>(path:string,method='GET',body?:unknown,sig
   body=normalizeDecimals(body);
   const fingerprint=method+path+JSON.stringify(body),write=method==='POST';
   let key=pending.get(fingerprint);if(write&&!key){key=crypto.randomUUID();pending.set(fingerprint,key)}
-  try{const result=await requestJson<{ok:true;data:T}>(`/api/nutrition${path}`,{method,signal,headers:{'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});pending.delete(fingerprint);return result.data}catch(error){throw error}
+  const result=await requestJson<{ok:true;data:T}>(`/api/nutrition${path}`,{
+    method,signal,headers:{'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},
+    ...(body===undefined?{}:{body:JSON.stringify(body)}),
+  });
+  pending.delete(fingerprint);
+  return result.data;
 }
 export const fmt=(value:unknown,digits=1):string=>value===null||value===undefined||value===''?'—':Number(value).toLocaleString('hr-HR',{maximumFractionDigits:digits});
 export const mealLabels:Record<string,string>={breakfast:'Doručak',lunch:'Ručak',snack:'Međuobrok',dinner:'Večera'};

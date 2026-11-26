@@ -43,6 +43,63 @@ class NutritionTests(unittest.TestCase):
         data={'foodId':self.food['id'],'quantity':quantity,'location':'pantry','expiresOn':expiry,'cost':None}
         return self.service.repo.operation('receipt',key,data,lambda db,op:self.service.receive(db,op,data))
 
+    def test_transfer_unknown_ledger(self):
+        lot = self.receipt('receipt', 100, '2026-12-01')['lotId']
+        with self.connection() as db:
+            db.execute('UPDATE nutrition_inventory_transactions SET event_date=NULL WHERE lot_id=?', (lot,))
+            db.execute('UPDATE nutrition_inventory_lots SET cost=100000 WHERE id=?', (lot,))
+            version = self.service.inventory(db)[0]['version']
+        move = dict(lotId=lot, quantity=40, location='fridge', expectedVersion=version)
+        result = self.service.lot_change('transfer', 'move', move)
+        self.assertEqual(result, self.service.lot_change('transfer', 'move', move))
+        with self.connection() as db:
+            stock = self.service.inventory(db)
+            self.assertEqual([row['availableQuantity'] for row in stock], ['0','0'])
+            moved = next(row for row in stock if row['id'] != lot)
+            self.assertEqual((moved['quantity'], moved['cost']), ('40', '4'))
+        self.service.reverse('undo', result['operationId'])
+        with self.connection() as db:
+            self.assertEqual(self.service.inventory(db)[0]['quantity'], '100')
+
+    def test_transfer_preserves_dated_and_expired_capacity(self):
+        for expiry, expected in [('2026-11-30', 100), ('2026-11-01', 0)]:
+            lot = self.receipt('receipt-'+expiry, 100, expiry)['lotId']
+            with self.connection() as db:
+                version = next(row['version'] for row in self.service.inventory(db) if row['id']==lot)
+            self.service.lot_change('transfer', 'move-'+expiry,
+                dict(lotId=lot, quantity=40, location='fridge', expectedVersion=version))
+            with self.connection() as db:
+                stock = [row for row in self.service.inventory(db) if row['expires_on']==expiry]
+                self.assertEqual(sum(Decimal(row['quantity']) for row in stock), 100)
+                self.assertEqual(sum(Decimal(row['availableQuantity']) for row in stock), expected)
+
+    def test_delete_plan_preserves_shopping_source_and_checks_version(self):
+        from nutrition.routes import create_router
+        from nutrition.models import ShoppingCreate
+        core = SimpleNamespace(archive_connection=self.connection, iso_today=self.service.today,
+            initialize_archive=lambda:None, ENV={}, OPENAI_API_KEY='', OPENAI_LAB_MODEL='test')
+        endpoints = {route.name:route.endpoint for route in create_router(core).routes}
+        day = self.service.today()
+        plan = dict(date=day, meal='lunch', recipeVersionId=self.recipe['versionId'], portions='2')
+        linked = self.service.save_plan(plan)['id']
+        endpoints['shopping_create'](ShoppingCreate(start=day, end=day), 'list')
+        self.assertTrue(endpoints['plan'](day)['data'][0]['linkedToShopping'])
+        with self.assertRaises(HTTPException) as conflict:
+            endpoints['delete_plan'](linked, 1)
+        self.assertEqual(conflict.exception.status_code, 409)
+        self.assertIn('Preskočeno', conflict.exception.detail)
+        self.service.save_plan(dict(plan, expectedVersion=1, status='skipped'), linked)
+        with self.connection() as db:
+            self.assertEqual(db.execute('SELECT plan_id FROM nutrition_shopping_sources').fetchall(), [(linked,)])
+            self.assertEqual(self.service.shopping(db, day, day), [])
+        free = self.service.save_plan(plan)['id']
+        self.service.save_plan(dict(plan, expectedVersion=1, portions='3'), free)
+        with self.assertRaises(HTTPException) as stale:
+            endpoints['delete_plan'](free, 1)
+        self.assertEqual(stale.exception.status_code, 409)
+        self.assertEqual(endpoints['delete_plan'](free, 2)['data']['id'], free)
+        self.assertEqual([p['id'] for p in endpoints['plan'](day)['data']], [linked])
+
     def test_blank_profile_and_exact_fefo_idempotency(self):
         with self.connection() as db:self.assertEqual(self.service.profile(db),{'version':0})
         late=self.receipt('late','100','2026-12-01')

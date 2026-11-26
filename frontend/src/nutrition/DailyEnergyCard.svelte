@@ -1,8 +1,8 @@
 <script lang="ts">
   import {fmt, comparisonNutrients, carbExplanation, type Diary, type Energy} from '../lib/nutritionApi';
 
-  let {diary, energy, busy, onsettings, oncomplete}: {
-    diary: Diary; energy: Energy | null; busy: boolean;
+  let {diary, energy, busy, settingsReady, onsettings, oncomplete}: {
+    diary: Diary; energy: Energy | null; busy: boolean; settingsReady: boolean;
     onsettings: () => void; oncomplete: () => void;
   } = $props();
   const target = $derived(Number(diary.targets.calories) > 0 ? Number(diary.targets.calories) : null);
@@ -18,7 +18,7 @@
 <article class="panel nutrition-day-summary" aria-label="Energija">
   <header>
     <div><h3>Energija</h3><span>{target === null ? 'Dnevni cilj nije postavljen' : 'Cilj '+fmt(target,0)+' kcal'}</span></div>
-    <button type="button" class="settings" onclick={onsettings} aria-label="Uredi ciljeve prehrane" title="Uredi ciljeve prehrane">⚙</button>
+    <button type="button" class="settings" disabled={!settingsReady} onclick={onsettings} aria-label="Uredi ciljeve prehrane" title="Uredi ciljeve prehrane">⚙</button>
   </header>
   <div class="balance">
     <div class="side"><span>Uneseno</span><strong>{fmt(intake,0)}</strong><small>kcal</small></div>

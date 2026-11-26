@@ -240,3 +240,67 @@ test('AI failure requires a refreshed preview and fresh confirmation', async ({ 
   await expect(panel).toContainText('Potvrđen nacrt');
   expect(generations).toBe(2);
 });
+
+test('scaling a recipe preserves an open profile draft without reloading local data', async ({ page }) => {
+  await setup(page, 'recipes');
+  const profile = page.locator('.nutrition-profile');
+  await profile.locator('summary').click();
+  const goal = profile.getByLabel('Energija · kcal', {exact:true});
+  await goal.fill('2137');
+  const reloads: string[] = [];
+  page.on('request', request => {
+    if (request.method() === 'GET' && request.url().includes('/api/nutrition/')) reloads.push(request.url());
+  });
+  await page.route('**/api/nutrition/recipes/recipe-a/scale-preview', route => route.fulfill({json: {
+    ok:true, data:{portions:'3', factor:'1.5', feasible:true, missing:[], warnings:[]},
+  }}));
+  const card = page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'Testni recept a',exact:true})});
+  await card.getByRole('button',{name:'Pregled skaliranja'}).click();
+  await expect(card).toContainText('3 porcija');
+  await expect(page.locator('.nutrition')).toHaveAttribute('aria-busy','false');
+  expect(reloads).toEqual([]);
+  await expect(goal).toHaveValue('2137');
+});
+
+test('new recipe form starts blank after leaving an existing recipe', async ({ page }) => {
+  await setup(page, 'recipes');
+  const card = page.locator('.nutrition article').filter({has:page.getByRole('heading',{name:'Testni recept a',exact:true})});
+  await card.getByRole('button',{name:'Uredi',exact:true}).click();
+  const editor = page.locator('details.nutrition-details').filter({has: page.locator('summary').filter({hasText:/^(Uredi recept|Novi recept)$/})});
+  await expect(editor.getByLabel('Naziv',{exact:true})).toHaveValue('Testni recept a');
+  await editor.getByRole('button',{name:'Završi uređivanje'}).click();
+  await editor.locator('summary').click();
+  await expect(editor.getByLabel('Naziv',{exact:true})).toHaveValue('');
+  await expect(editor.getByLabel('Broj porcija')).toHaveValue('1');
+  await expect(editor.getByLabel('Količina',{exact:true})).toHaveCount(0);
+});
+
+test('pending recipe save locks editor changes and refreshes the saved name once', async ({page}) => {
+  await setup(page, 'recipes');
+  const list = recipes.map(recipe => ({...recipe}));
+  let reads = 0, writes = 0;
+  await page.route('**/api/nutrition/recipes', route => {
+    reads++;
+    return route.fulfill({json:{ok:true,data:list}});
+  });
+  const release = await defer(page, '**/api/nutrition/recipes/recipe-a', async route => {
+    expect(route.request().method()).toBe('PATCH');
+    writes++;
+    list[0].name = route.request().postDataJSON().name;
+    await route.fulfill({json:{ok:true,data:list[0]}});
+  });
+  const edit = page.locator('.nutrition article').getByRole('button',{name:'Uredi',exact:true});
+  await edit.first().click();
+  const editor = page.locator('details').filter({has:page.getByRole('button',{name:'Završi uređivanje'})});
+  await editor.getByLabel('Naziv',{exact:true}).fill('Novi naziv recepta');
+  const sent = page.waitForRequest('**/api/nutrition/recipes/recipe-a');
+  await editor.getByRole('button',{name:'Spremi novu verziju'}).click();
+  await sent;
+  try {
+    await expect(editor.getByRole('button',{name:'Završi uređivanje'})).toBeDisabled();
+    await expect(edit.nth(1)).toBeDisabled();
+  } finally { release(); }
+  await expect(page.getByRole('heading',{name:'Novi naziv recepta',exact:true})).toBeVisible();
+  await expect(edit.nth(1)).toBeEnabled();
+  expect({reads,writes}).toEqual({reads:1,writes:1});
+});

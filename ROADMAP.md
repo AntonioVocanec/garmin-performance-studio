@@ -6,6 +6,8 @@ Održavati jedan osobni Garmin pregled s jasnim dnevnim sažetkom, odvojenom ana
 
 ## Trenutačno stanje
 
+- Prehrana · Moj dan samostalno učitava dnevnik i dohvaća katalog pri unosu obroka. Premještanje stare zalihe čuva njezinu raspoloživost, a plan povezan s kupovinom može se preskočiti uz očuvanje veze sa spremljenom listom.
+
 - Četiri pogleda: **Pregled**, **Trening & Load**, **Prehrana** i **Laboratorij**, s brzom navigacijom i sklopivim grupama sadržaja.
 - Pregled obuhvaća san, oporavak, Sleep debt, dnevnu aktivnost i sljedeći Runna trening.
 - Trening prikazuje load, kalendar, trkačke i višesportske trendove, plan i izvedbu, opremu te detalje aktivnosti.

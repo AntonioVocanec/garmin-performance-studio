@@ -170,6 +170,12 @@ test('nutrition profile starts configurable and shopping receipt is idempotent i
  const key=crypto.randomUUID(),body={itemId:item.id,quantity:'200',location:'freezer',expiresOn:'2099-12-01',cost:'4.20',expectedVersion:item.version};
  const first=await call('/shopping/receive',body,key),second=await call('/shopping/receive',body,key);expect(second).toEqual(first);
  const stock=await request.get('/api/nutrition/inventory');expect((await stock.json()).data.filter((l:{food_id:string})=>l.food_id===food.id)).toHaveLength(1);
+ await openNutritionSection(page, 'planner');
+ const linked=page.locator('.nutrition-plan-item').filter({hasText:recipe.name});
+ await expect(linked.getByRole('button',{name:'Ukloni plan'})).toHaveCount(0);
+ await expect(linked).toContainText('Plan je povezan s kupovinom');
+ await linked.getByLabel('Status plana').selectOption('skipped');
+ await expect(linked.getByLabel('Status plana')).toHaveValue('skipped');
  await openNutritionSection(page, 'shopping');await expect(page.locator('.nutrition')).toContainText(food.name);
  await page.setViewportSize({width:360,height:800});
  const selected=page.locator('.nutrition-subnav a[href="#nutrition-shopping"]');await expect(selected).toHaveAttribute('aria-current','page');

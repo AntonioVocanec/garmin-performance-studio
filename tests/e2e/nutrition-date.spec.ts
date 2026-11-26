@@ -126,3 +126,35 @@ test('Nutrition refresh reloads the selected energy and rejects missing or misma
   await expect(page.locator('.nutrition [role=alert]')).toBeVisible();
   await expect(balance(page)).toHaveCount(0);
 });
+
+test('Moj dan keeps the new diary when the old plan arrives late and the profile fails', async ({page})=>{
+  await mockDashboardApi(page);
+  await page.clock.setFixedTime(new Date(A+'T12:00:00Z'));
+  await page.addInitScript(()=>{
+    const fetch=window.fetch.bind(window);
+    window.fetch=(url,init)=>fetch(url,String(url).includes('/nutrition/plan?')?{...init,signal:null}:init);
+  });
+  await page.route('**/api/nutrition/profile',route=>route.fulfill({status:503,body:'Nedostupno'}));
+  const held=gate();
+  await page.route('**/api/nutrition/plan?*',async route=>{
+    const day=new URL(route.request().url()).searchParams.get('week');
+    if(day===A)await held.wait;
+    await route.fulfill({json:{ok:true,data:[{id:'plan-'+day,entry_date:day,meal:'lunch',
+      name:'Obrok '+day,portions:'1',status:'planned',nutrients:{kcal:'200'}}]}});
+  });
+  await page.route('**/api/nutrition/energy?*',route=>route.fulfill({json:{ok:true,data:{status:'unavailable'}}}));
+  const sent=page.waitForRequest(req=>req.url().includes('/plan?week='+A));
+  const delivered=page.waitForResponse(res=>res.url().includes('/plan?week='+A));
+  await page.goto('/#nutrition-overview');
+  const diary=page.locator('#nutrition-diary');
+  try{
+    await sent;
+    await expect(diary).toBeVisible();
+    await expect(page.locator('.nutrition [role=alert]')).toContainText('Profil prehrane');
+    await choose(page,B);
+    await expect(diary).toContainText('Obrok '+B);
+  }finally{held.open()}
+  await (await delivered).finished();
+  await expect(diary).not.toContainText('Obrok '+A);
+  await expect(diary).toContainText('Obrok '+B);
+});
